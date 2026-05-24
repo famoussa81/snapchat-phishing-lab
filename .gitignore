@@ -1,0 +1,43 @@
+# 🚫 Fichiers à ne pas commiter
+captured_credentials.db
+*.db
+*.db-journal
+
+# Fichiers générés
+static/css/
+static/js/
+static/images/
+static/_debug_screenshot.png
+templates/login.html
+templates/redirect.html
+
+# Dossiers temporaires
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+venv/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Certificats locaux
+*.pem
+*.key
+*.crt
+
+# Exports
+results/
+backups/
+*.json

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Étude Snapchat — Conscience Sécurité</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #fffefb;
+            color: #333;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .header {
+            color: #FFFC00;
+            background: #000;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 28px;
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+        h1 { font-size: 26px; margin-bottom: 16px; color: #000; }
+        h2 { font-size: 18px; margin: 28px 0 12px; color: #444; }
+        p { line-height: 1.7; font-size: 15px; margin-bottom: 14px; }
+        .box {
+            border: 2px solid #000;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .box strong { color: #000; display: block; margin-bottom: 8px; font-size: 13px; }
+        label { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; cursor: pointer; }
+        input[type="checkbox"] { width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; }
+        .btn {
+            background: #000;
+            color: #fff;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-block;
+            margin: 20px 0;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #333; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .warn { color: #cc0000; font-weight: 600; }
+        .meta { color: #888; font-size: 13px; margin-top: 4px; }
+        #id-block { background: #f5f5f0; }
+    </style>
+</head>
+<body>
+    <div class="header">🔬 LAB PURPLE TEAM — ÉTUDE SENSIBILISATION SNAPCHAT</div>
+
+    <h1>Consentement d'Étude</h1>
+    <p>
+        Cette étude évalue les réactions des utilisateurs face à des stimuli malveillants simulés 
+        (page de login factice, notifications de sécurité, etc.).<br>
+        C'est une <strong>recherche en sécurité</strong> encadrée par des règles éthiques strictes.
+    </p>
+
+    <div class="box" id="warning-box">
+        <strong>⚠️ Ce que vous devez savoir</strong>
+        <p>
+            Vous allez être confronté à des <span class="warn">simulations</span> d'attaques 
+            (page de login imitant Snapchat, fausses notifications de sécurité, etc.).
+            <strong>Aucune donnée ne sera envoyée à Snapchat</strong> — tout est stocké localement 
+            dans un cadre de recherche anonymisé.
+        </p>
+    </div>
+
+    <h2>📋 Conditions de participation</h2>
+    <div class="box">
+        <p><strong>Votre rôle :</strong> Simuler un utilisateur normal face à ces situations.</p>
+        <p><strong>Ce qui est attendu de vous :</strong></p>
+        <ul style="padding-left: 20px; margin: 8px 0; line-height: 1.8;">
+            <li>Remplir les formulaires comme si c'était un vrai service</li>
+            <li>Indiquer ce que vous feriez dans la vraie vie</li>
+            <li>Participer au débriefing après l'expérience</li>
+        </ul>
+        <p><strong>Ce qui sera collecté :</strong></p>
+        <ul style="padding-left: 20px; margin: 8px 0; line-height: 1.8;">
+            <li>Temps de réaction</li>
+            <li>Choix (clic / non-clic, remplissage / non-remplissage)</li>
+            <li>Votre niveau d'auto-évaluation en sécurité</li>
+            <li>Commentaire sur votre démarche</li>
+            <li><span class="warn">Aucune donnée personnelle sensible</span></li>
+        </ul>
+        <p style="margin-top: 10px;"><strong>Droit de retrait :</strong> Vous pouvez arrêter à tout moment sans justification.</p>
+    </div>
+
+    <h2>✅ Instructions</h2>
+    <div class="box">
+        <p>
+            <strong>1.</strong> Vous allez voir une page similaire à un site Snapchat.<br>
+            <strong>2.</strong> Simulez une connexion comme si c'était réel.<br>
+            <strong>3.</strong> Essayez de détecter ce qui semble étrange.<br>
+            <strong>4.</strong> Ensuite, remplissez le questionnaire de debriefing.
+        </p>
+    </div>
+
+    <div class="box" id="id-block">
+        <strong>🎟️ Identifiant du test</strong>
+        <p>Ce numéro assigne votre session de manière anonyme pour les analyses statistiques.</p>
+        <p style="font-size: 24px; font-weight: 700; color: #0066cc; margin: 8px 0;" id="participant-id">
+            {{ participant_id }}
+        </p>
+        <p class="meta">Notez-le si vous voulez retrouver vos résultats plus tard.</p>
+    </div>
+
+    <h2>Checklist de consentement</h2>
+    <div class="box">
+        <label>
+            <input type="checkbox" id="c1">
+            <span>J'ai lu et compris l'objectif de l'étude</span>
+        </label>
+        <label>
+            <input type="checkbox" id="c2">
+            <span>Je comprends que les données collectées sont anonymisées</span>
+        </label>
+        <label>
+            <input type="checkbox" id="c3">
+            <span>Je sais que je peux arrêter l'étude à tout moment</span>
+        </label>
+        <label>
+            <input type="checkbox" id="c4">
+            <span>J'accepte de participer volontairement</span>
+        </label>
+        <p style="margin-top:12px;"><a href="#" onclick="checkAll();return false;" style="color:#666;font-size:13px;">✓ Tout cocher</a></p>
+    </div>
+
+    <button class="btn" id="start-btn" disabled onclick="startLab()">
+        Commencer l'étude →
+    </button>
+    <p id="status" class="meta"></p>
+
+    <script>
+        const checks = ['c1', 'c2', 'c3', 'c4'];
+        function checkAll() {
+            checks.forEach(id => document.getElementById(id).checked = true);
+            updateBtn();
+        }
+        function updateBtn() {
+            const all = checks.every(id => document.getElementById(id).checked);
+            document.getElementById('start-btn').disabled = !all;
+            document.getElementById('status').textContent = 
+                all ? 'Prêt ! Clique sur Commencer.' : `${checks.filter(id => document.getElementById(id).checked).length}/4 cases cochées`;
+        }
+        checks.forEach(id => document.getElementById(id).addEventListener('change', updateBtn));
+        
+        function startLab() {
+            if (!document.getElementById('c4').checked) return;
+            var pid = document.getElementById('participant-id').textContent.trim();
+            sessionStorage.setItem('participant_id', pid);
+            navigator.sendBeacon('/api/consent', JSON.stringify({
+                participant_id: pid,
+                consent_given: true
+            }));
+            window.location.href = '/login';
+        }
+    </script>
+</body>
+</html>
