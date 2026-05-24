@@ -65,6 +65,9 @@ Variables d'environnement (optionnelles) :
 - `SNAPCHAT_LAB_ADMIN_KEY` : Cle admin pour les endpoints /reset, /export, /v2/*
 - `SNAPCHAT_LAB_DASHBOARD_PW` : Mot de passe du tableau de bord (launcher)
 
+HTTPS : Active par defaut (certificat auto-signe genere via cryptography).
+Desactiver avec `USE_HTTPS: False` dans main.py.
+
 ## Endpoints API
 
 | Point | Methode | Role |

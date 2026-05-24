@@ -48,9 +48,10 @@ def start_flask():
     import logging as _lg
     _lg.getLogger("werkzeug").setLevel(_lg.ERROR)
     _lg.getLogger("flask").setLevel(_lg.ERROR)
-    from main import app, init_database
+    from main import app, init_database, CONFIG
     init_database()
-    app.run(host="0.0.0.0", port=5000, threaded=True, use_reloader=False)
+    ssl = 'adhoc' if CONFIG.get("USE_HTTPS") else None
+    app.run(host="0.0.0.0", port=5000, threaded=True, use_reloader=False, ssl_context=ssl)
 
 def start_server():
     global flask_thread
@@ -88,8 +89,9 @@ def start_tunnel():
 def _run_tunnel():
     global cf_url, cf_proc
     try:
+        proto = "https"
         proc = subprocess.Popen(
-            [CF_PATH, "tunnel", "--url", "http://127.0.0.1:5000"],
+            [CF_PATH, "tunnel", "--url", f"{proto}://127.0.0.1:5000"],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             creationflags=subprocess.CREATE_NO_WINDOW
         )
@@ -119,7 +121,12 @@ def stop_tunnel():
     cf_url = None
 
 def server_url():
-    url = "http://localhost:5000"
+    try:
+        from main import CONFIG as _cfg
+        proto = "https" if _cfg.get("USE_HTTPS") else "http"
+    except:
+        proto = "http"
+    url = f"{proto}://localhost:5000"
     if cf_url:
         url = f"{url}  |  CF: {cf_url}"
     return url
@@ -130,7 +137,7 @@ def menu():
         logo()
         status = "🟢 EN LIGNE" if is_server_running() else "🔴 ARRETE"
         show_dashboard_preview()
-        print(f"\n  Serveur : http://localhost:5000  |  {status}")
+        print(f"\n  Serveur : {server_url()}  |  {status}")
         if cf_url and is_server_running():
             print(f"  Tunnel   : {cf_url}")
         print(f"  {'─'*50}")
@@ -145,7 +152,7 @@ def menu():
         if c == "1":
             stop_tunnel()
             if start_server():
-                print("\n  ✓ http://localhost:5000\n")
+                print(f"\n  ✓ {server_url()}\n")
             else:
                 print("  ✗ Echec du demarrage\n")
             input("  Entree...")
@@ -235,7 +242,7 @@ def check_pw():
     return True
 
 def open_browser():
-    target = cf_url if cf_url else "http://localhost:5000"
+    target = cf_url if cf_url else server_url().split("  |")[0].strip()
     webbrowser.open(target)
     print(f"\n  ✓ {target}\n")
     input("  Entree...")
