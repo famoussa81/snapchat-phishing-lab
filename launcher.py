@@ -151,8 +151,15 @@ def menu():
             input("  Entree...")
         elif c == "3":
             if not os.path.exists(CF_PATH):
-                print(f"\n  ✗ cloudflared.exe introuvable dans le dossier.\n")
-                input("  Entree..."); continue
+                print("\n  Telechargement de cloudflared.exe...")
+                import urllib.request
+                url = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+                try:
+                    urllib.request.urlretrieve(url, CF_PATH)
+                    print("  ✓ Telecharge\n")
+                except Exception as e:
+                    print(f"  ✗ Echec: {e}\n")
+                    input("  Entree..."); continue
             if not start_server():
                 print("  ✗ Echec du demarrage du serveur\n")
                 input("  Entree..."); continue

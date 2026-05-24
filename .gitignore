@@ -45,3 +45,6 @@ backups/
 # Logs
 server_output.log
 *_debug_screenshot*.png
+
+# Binaries (auto-downloaded)
+cloudflared.exe
