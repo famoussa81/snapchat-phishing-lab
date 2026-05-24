@@ -41,3 +41,7 @@ Thumbs.db
 results/
 backups/
 *.json
+
+# Logs
+server_output.log
+*_debug_screenshot*.png
