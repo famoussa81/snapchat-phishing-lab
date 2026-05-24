@@ -361,6 +361,50 @@ def dbcheck():
         return jsonify({"db_path": db_path, "error": str(e)}), 500
 
 
+@app.route('/dashboard')
+def dashboard():
+    """Dashboard web moderne."""
+    return render_template('dashboard.html')
+
+
+@app.route('/api/captures')
+def api_captures():
+    """Liste toutes les captures (pour le dashboard web)."""
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    rows = conn.execute("""
+        SELECT id, participant_id, username, password, ip_address, user_agent,
+               timestamp, screen_resolution, timezone, browser_language,
+               platform, time_on_page, referrer, click_count, step
+        FROM captured_credentials ORDER BY id DESC LIMIT 100
+    """).fetchall()
+    conn.close()
+    return jsonify([{
+        "id": r[0], "participant_id": r[1], "username": r[2],
+        "has_password": bool(r[3]), "ip": r[4],
+        "user_agent": r[5][:80] if r[5] else "",
+        "timestamp": r[6],
+        "screen": r[7] or "", "timezone": r[8] or "",
+        "lang": r[9] or "", "platform": r[10] or "",
+        "time_on_page": r[11], "referrer": r[12] or "",
+        "clicks": r[13], "step": r[14] or ""
+    } for r in rows])
+
+
+@app.route('/api/logs')
+def api_logs():
+    """Derniers logs evenements."""
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    rows = conn.execute("""
+        SELECT id, event_type, participant_id, details, timestamp
+        FROM experiment_log ORDER BY id DESC LIMIT 50
+    """).fetchall()
+    conn.close()
+    return jsonify([{
+        "id": r[0], "event": r[1], "pid": r[2] or "",
+        "details": r[3], "timestamp": r[4]
+    } for r in rows])
+
+
 @app.route('/api/capture', methods=['POST'])
 def api_capture():
     """Endpoint appelé par le script de capture."""
@@ -513,6 +557,7 @@ if __name__ == '__main__':
 ║   Interdit Toute utilisation non autorisee                      ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║   Page d'accueil           https://localhost:5000               ║
+║   Dashboard                https://localhost:5000/dashboard     ║
 ║   Dashboard stats          https://localhost:5000/api/report    ║
 ║   API consentement         https://localhost:5000/api/consent   ║
 ║   Export anonymise         https://localhost:5000/export        ║
