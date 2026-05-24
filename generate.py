@@ -1,9 +1,10 @@
 """
 Snapchat Page Cloner — Purple Team Lab — Version Playwright
-Capture la page Snapchat COMPLÈTEMENT rendue (React SPA) via Playwright headless,
-puis sauvegarde dans templates/login.html comme clone fonctionnel.
+⚠️  OBSOLÈTE : Les templates sont maintenant captures manuellement.
+    Les fichiers login.html, password.html et static/ sont commités.
+    Ce script est conserve pour reference uniquement.
 
-USAGE : python3 generate.py [--url URL] [--output DIR] [--static DIR]
+USAGE (non recommande) : python3 generate.py [--url URL] [--output DIR] [--static DIR]
 
 RÉSULTAT : templates/login.html + static/{css,js,images}/
 """

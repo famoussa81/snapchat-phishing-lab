@@ -3,13 +3,8 @@ captured_credentials.db
 *.db
 *.db-journal
 
-# Fichiers générés
-static/css/
-static/js/
-static/images/
-static/_debug_screenshot.png
-templates/login.html
-templates/redirect.html
+# Captures d'écran de debug (generees par generate.py)
+static/_debug_screenshot*.png
 
 # Dossiers temporaires
 __pycache__/
