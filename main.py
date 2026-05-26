@@ -57,9 +57,15 @@ def require_c2_auth(f):
     def wrapper(*args, **kwargs):
         remote = request.remote_addr or ''
         forwarded = request.headers.get('X-Forwarded-For', '')
-        is_local = remote in ('127.0.0.1', '::1') and not forwarded
-        # Bypass only for API calls from localhost (TUI compat)
-        # Dashboard pages ALWAYS require auth
+        # Accept localhost, WSL, Docker and private IPs for API bypass
+        is_local = remote in ('127.0.0.1', '::1', 'localhost')
+        if not is_local and remote:
+            try:
+                from ipaddress import ip_address, ip_network
+                addr = ip_address(remote)
+                is_local = addr.is_loopback or addr.is_private or addr.is_link_local
+            except:
+                pass
         is_api = request.path.startswith('/api/')
         is_local_api = is_local and is_api
         if is_local_api or session.get('c2_authenticated'):
