@@ -257,6 +257,11 @@ def index():
                          participant_id=session['participant_id'])
 
 
+@app.route('/c2')
+def c2_dashboard():
+    return render_template('c2_dashboard.html',
+                         participant_id=session.get('participant_id', ''))
+
 @app.route('/scenario/<scenario_id>')
 def scenario_page(scenario_id):
     if 'participant_id' not in session:

