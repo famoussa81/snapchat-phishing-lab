@@ -1,45 +1,39 @@
-# 🚫 Fichiers à ne pas commiter
-captured_credentials.db
-*.db
-*.db-journal
-
-# Captures d'écran de debug (generees par generate.py)
-static/_debug_screenshot*.png
-
-# Dossiers temporaires
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-.eggs/
-venv/
-env/
-.venv/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Certificats locaux
-*.pem
-*.key
-*.crt
-
-# Exports
-results/
-backups/
-*.json
-
-# Logs
-server_output.log
-*_debug_screenshot*.png
 
 # Binaries (auto-downloaded)
+# Captures d'écran de debug (generees par generate.py)
+# Certificats locaux
+# Dossiers temporaires
+# Exports
+# IDE
+# Logs
+# OS
+# 🚫 Fichiers à ne pas commiter
+*.crt
+*.db
+*.db-journal
+*.egg-info/
+*.json
+*.key
+*.pem
+*.pyc
+*.pyo
+*.swo
+*.swp
+*_debug_screenshot*.png
+*~
+.DS_Store
+.admin_key
+.eggs/
+.idea/
+.venv/
+.vscode/
+Thumbs.db
+__pycache__/
+backups/
+captured_credentials.db
 cloudflared.exe
+env/
+results/
+server_output.log
+static/_debug_screenshot*.png
+venv/
