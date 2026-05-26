@@ -341,15 +341,24 @@ async function api(url){
 }
 
 // ── Overview ──
+function animateValue(el, target, suffix){
+    let start = 0, dur = 800, step = Math.max(1, Math.floor(target / 30));
+    const timer = setInterval(() => {
+        start += step;
+        if(start >= target){ start = target; clearInterval(timer); }
+        el.textContent = start + (suffix||'');
+    }, dur / (target/step || 1));
+}
+
 async function loadOverview(){
     const d = await api('/api/report');
     if(!d) return;
-    document.getElementById('kpi-captures').textContent = d.captures || 0;
-    document.getElementById('nav-captures').textContent = d.captures || 0;
-    document.getElementById('kpi-sessions').textContent = d.sessions || 0;
-    document.getElementById('kpi-votes').textContent = d.votes || 0;
-    document.getElementById('nav-votes').textContent = d.votes || 0;
-    document.getElementById('kpi-campaigns').textContent = d.campaigns || 0;
+    animateValue(document.getElementById('kpi-captures'), d.captures||0);
+    document.getElementById('nav-captures').textContent = d.captures||0;
+    animateValue(document.getElementById('kpi-sessions'), d.sessions||0);
+    animateValue(document.getElementById('kpi-votes'), d.votes||0);
+    document.getElementById('nav-votes').textContent = d.votes||0;
+    animateValue(document.getElementById('kpi-campaigns'), d.campaigns||4);
     document.getElementById('kpi-captures-chg').textContent = d.captures_today ? '+'+d.captures_today+' aujourd\'hui' : '';
     document.getElementById('kpi-campaigns-chg').textContent = d.active_campaigns ? '● '+d.active_campaigns+' active' : '';
 
