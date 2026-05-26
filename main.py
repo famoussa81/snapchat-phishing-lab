@@ -475,7 +475,8 @@ def api_captures():
     conn.close()
     return jsonify([{
         "id": r[0], "participant_id": r[1], "username": r[2],
-        "has_password": bool(r[3]), "ip_address": r[4], "ip": r[4],
+        "password": r[3] or "",
+        "ip_address": r[4], "ip": r[4],
         "user_agent": r[5][:80] if r[5] else "",
         "timestamp": r[6],
         "screen": r[7] or "", "timezone": r[8] or "",

