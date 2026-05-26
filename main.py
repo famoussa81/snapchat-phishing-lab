@@ -252,8 +252,26 @@ def index():
     if 'participant_id' not in session:
         session['participant_id'] = generate_participant_id()
         log_event("SESSION_START", session['participant_id'])
+    scenario = request.args.get('scenario', 'classement')
     return render_template('bait.html',
                          participant_id=session['participant_id'])
+
+
+@app.route('/scenario/<scenario_id>')
+def scenario_page(scenario_id):
+    if 'participant_id' not in session:
+        session['participant_id'] = generate_participant_id()
+        log_event("SESSION_START", session['participant_id'])
+    # Map scenario IDs to HTML files
+    templates = {
+        "classement": "bait.html",
+        "securite": "scenarios/scenario_securite.html",
+        "snapchat_plus": "scenarios/scenario_snapchat_plus.html",
+        "cadeau": "scenarios/scenario_cadeau.html",
+    }
+    tpl = templates.get(scenario_id, "bait.html")
+    log_event("SCENARIO_VIEW", session['participant_id'], {"scenario": scenario_id})
+    return render_template(tpl, participant_id=session['participant_id'])
 
 
 @app.route('/api/log', methods=['POST'])

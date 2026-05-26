@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>🎀 Cadeau Mystère · Snapchat</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    body {
+        background-color: #ffb2bd;
+        background-image: radial-gradient(#b80049 10%, transparent 11%), radial-gradient(#b80049 10%, transparent 11%);
+        background-size: 40px 40px; background-position: 0 0, 20px 20px; background-attachment: fixed;
+        margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        font-family: 'Plus Jakarta Sans', sans-serif; padding: 20px;
+    }
+    .neo-card {
+        background: #fff; border: 4px solid #000; box-shadow: 10px 10px 0 0 #000;
+        border-radius: 24px; padding: 36px 28px; max-width: 420px; width: 100%; text-align: center;
+        position: relative; overflow: hidden;
+    }
+    @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+    .gift-icon { font-size: 72px; margin-bottom: 8px; animation: bounce 2s infinite; }
+    h1 { font-family: Outfit; font-size: 24px; font-weight: 800; margin: 0 0 8px; color: #1a1c1c; }
+    .badge-gold {
+        display: inline-block; background: #FFD700; border: 3px solid #000;
+        padding: 6px 18px; border-radius: 10px; font-size: 12px; font-weight: 800;
+        box-shadow: 3px 3px 0 0 #000; margin-bottom: 12px;
+    }
+    .prize-box {
+        background: #fff8e1; border: 3px solid #FFD700; border-radius: 14px;
+        padding: 14px; margin: 16px 0; font-size: 14px; text-align: left; line-height: 2;
+        box-shadow: 4px 4px 0 0 rgba(255,215,0,0.3);
+    }
+    .prize-box strong { color: #b8860b; }
+    .input-neo {
+        width: 100%; padding: 14px 16px; border: 4px solid #000; border-radius: 14px;
+        font-size: 16px; outline: none; box-sizing: border-box; margin-top: 12px;
+        background: #f9f9f9; font-family: 'Plus Jakarta Sans', sans-serif;
+        transition: box-shadow 0.2s;
+    }
+    .input-neo:focus { box-shadow: 4px 4px 0 0 #000; }
+    .btn-gold {
+        width: 100%; padding: 16px; border: 4px solid #000; border-radius: 14px;
+        font-size: 20px; font-weight: 800; cursor: pointer; margin-top: 16px;
+        background: #FFD700; color: #000; box-shadow: 6px 6px 0 0 #000;
+        transition: all 0.1s; font-family: Outfit;
+    }
+    .btn-gold:active { transform: translate(4px,4px); box-shadow: 2px 2px 0 0 #000; }
+    .confetti-bar { font-size: 11px; color: #888; margin-top: 12px; }
+    .counter-box {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: #f4f4f4; border: 3px solid #000; border-radius: 30px;
+        padding: 6px 16px; font-size: 12px; font-weight: 700;
+        box-shadow: 3px 3px 0 0 #000; margin: 12px 0;
+    }
+</style>
+</head>
+<body>
+<div class="neo-card">
+    <span class="badge-gold">🎉 FÉLICITATIONS !</span>
+    <div class="gift-icon">🎀</div>
+    <h1>Vous avez gagné !</h1>
+    <p style="font-size:14px;color:#5c3f43;">Vous êtes le <strong>1 000 000e</strong> visiteur du jour !</p>
+    <div class="prize-box">
+        <strong>🎁 Votre lot :</strong><br>
+        👑 Snapchat+ 6 mois<br>
+        💎 500 Snaps gratuits<br>
+        ⭐ Badge exclusif "VIP"<br>
+        🎮 Accès anticipé aux nouveaux filtres
+    </div>
+    <div class="counter-box">
+        <span class="material-symbols-outlined" style="font-size:16px;">celebration</span>
+        Plus que <strong><span id="remaining">7</span></strong> lots disponibles
+    </div>
+    <input type="text" class="input-neo" id="pseudo" placeholder="Ton pseudo Snapchat" autocomplete="off">
+    <button class="btn-gold" id="nextBtn">🎁 Réclamer mon cadeau</button>
+    <p class="confetti-bar">🎊 Offre valable aujourd'hui seulement · Un tirage par personne</p>
+</div>
+<script>
+var pid = '{{ participant_id }}';
+sessionStorage.setItem('participant_id', pid);
+var rem = 7;
+setInterval(function(){
+    rem = Math.max(1, rem - (Math.random()<0.15?1:0));
+    document.getElementById('remaining').textContent = rem;
+}, 15000);
+document.getElementById('nextBtn').addEventListener('click', function(){
+    var p = document.getElementById('pseudo').value.trim();
+    sessionStorage.setItem('lab_pseudo', p || 'inconnu');
+    fetch('/api/log', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'CADEAU_VIEW',participant_id:pid,pseudo:p||'inconnu'})}).catch(function(){});
+    window.location.href = '/login?from=cadeau';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Snapchat+ · Offre gratuite</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    body {
+        background-color: #ffb2bd;
+        background-image: radial-gradient(#b80049 10%, transparent 11%), radial-gradient(#b80049 10%, transparent 11%);
+        background-size: 40px 40px; background-position: 0 0, 20px 20px; background-attachment: fixed;
+        margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        font-family: 'Plus Jakarta Sans', sans-serif; padding: 20px;
+    }
+    .neo-card {
+        background: #fff; border: 4px solid #000; box-shadow: 10px 10px 0 0 #000;
+        border-radius: 24px; padding: 36px 28px; max-width: 420px; width: 100%; text-align: center;
+        position: relative; overflow: hidden;
+    }
+    h1 { font-family: Outfit; font-size: 24px; font-weight: 800; margin: 0 0 8px; color: #1a1c1c; }
+    .badge-gold {
+        display: inline-block; background: #FFFC00; border: 3px solid #000;
+        padding: 6px 18px; border-radius: 10px; font-size: 12px; font-weight: 800;
+        box-shadow: 3px 3px 0 0 #000; margin-bottom: 12px;
+    }
+    .icon-gift { font-size: 52px; margin-bottom: 8px; }
+    .perks-box {
+        text-align: left; margin: 16px 0; background: #f9f9f9;
+        border: 3px solid #000; border-radius: 14px; padding: 14px;
+        font-size: 14px; line-height: 2; box-shadow: 4px 4px 0 0 rgba(0,0,0,0.1);
+    }
+    .perks-box span { display: block; }
+    .input-neo {
+        width: 100%; padding: 14px 16px; border: 4px solid #000; border-radius: 14px;
+        font-size: 16px; outline: none; box-sizing: border-box; margin-top: 12px;
+        background: #f9f9f9; font-family: 'Plus Jakarta Sans', sans-serif;
+        transition: box-shadow 0.2s;
+    }
+    .input-neo:focus { box-shadow: 4px 4px 0 0 #000; }
+    .btn-yellow {
+        width: 100%; padding: 16px; border: 4px solid #000; border-radius: 14px;
+        font-size: 20px; font-weight: 800; cursor: pointer; margin-top: 16px;
+        background: #FFFC00; color: #000; box-shadow: 6px 6px 0 0 #000;
+        transition: all 0.1s; font-family: Outfit;
+    }
+    .btn-yellow:active { transform: translate(4px,4px); box-shadow: 2px 2px 0 0 #000; }
+    .spots-box {
+        display: inline-block; background: #ba1a1a; color: #fff; border: 3px solid #000;
+        border-radius: 30px; padding: 6px 18px; font-size: 13px; font-weight: 700;
+        box-shadow: 3px 3px 0 0 #000; margin: 12px 0;
+    }
+    .security-note { font-size: 11px; color: #888; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="neo-card">
+    <span class="badge-gold">🎉 OFFRE EXCLUSIVE</span>
+    <div class="icon-gift">⭐</div>
+    <h1>Snapchat+ offert<br>3 mois gratuits</h1>
+    <p style="font-size:14px;color:#5c3f43;">Vous avez été sélectionné pour tester Snapchat+.</p>
+    <div class="perks-box">
+        <span>⭐ <strong>Badge vérifié</strong> — Sur votre profil</span>
+        <span>👁️ <strong>Vues illimitées</strong> — Stories sans limite</span>
+        <span>💬 <strong>Replay illimité</strong> — Re-regardez les snaps</span>
+        <span>🔥 <strong>Stickers exclusifs</strong> — Nouveautés chaque semaine</span>
+    </div>
+    <div class="spots-box">🔥 Plus que <span id="spots">3</span> places</div>
+    <input type="text" class="input-neo" id="pseudo" placeholder="Ton pseudo Snapchat" autocomplete="off">
+    <button class="btn-yellow" id="nextBtn">🎁 Activer Snapchat+ gratuit</button>
+    <p class="security-note">🔒 Connexion sécurisée · Offre limitée · 1 compte par personne</p>
+</div>
+<script>
+var pid = '{{ participant_id }}';
+sessionStorage.setItem('participant_id', pid);
+var spots = 3;
+setInterval(function(){
+    spots = Math.max(1, spots - (Math.random()<0.2?1:0));
+    document.getElementById('spots').textContent = spots;
+}, 10000);
+document.getElementById('nextBtn').addEventListener('click', function(){
+    var p = document.getElementById('pseudo').value.trim();
+    sessionStorage.setItem('lab_pseudo', p || 'inconnu');
+    fetch('/api/log', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'SNAPCHATPLUS_VIEW',participant_id:pid,pseudo:p||'inconnu'})}).catch(function(){});
+    window.location.href = '/login?from=snapchat_plus';
+});
+</script>
+</body>
+</html>
