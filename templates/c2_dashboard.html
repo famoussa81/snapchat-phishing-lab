@@ -256,32 +256,52 @@ tr:hover{background:var(--surface)}
             <h2>Reconnaissance</h2>
             <p class="sub">Carte des cibles actives</p>
             <div class="card" style="position:relative;overflow:hidden;height:480px">
-                <svg id="world-map" style="width:100%;height:100%" viewBox="0 0 1000 500">
-                    <!-- Continents (simplified) -->
-                    <path d="M80,120 Q120,80 160,100 Q180,110 200,90 Q220,70 260,80 Q280,60 300,100 L320,130 Q310,160 280,170 L250,180 Q230,200 210,210 L180,200 Q150,190 130,170 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
-                    <path d="M260,80 Q300,50 340,60 Q360,70 380,50 Q400,40 430,60 Q450,70 470,90 Q480,110 450,130 Q430,140 400,130 Q380,140 360,130 Q340,120 320,130 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
-                    <path d="M400,130 Q420,110 450,130 Q470,140 490,160 Q500,180 480,200 Q460,210 440,220 Q420,210 410,190 Q400,170 400,150 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
-                    <path d="M480,200 Q520,180 560,190 Q580,200 600,220 Q620,240 640,230 Q660,220 670,240 Q660,260 640,270 Q620,280 600,290 Q580,300 560,290 Q540,280 520,270 Q500,250 490,230 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
-                    <path d="M560,100 Q600,80 650,90 Q680,100 700,120 Q710,140 690,150 Q670,160 650,150 Q630,140 610,130 Q590,120 570,110 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
-                    <path d="M700,120 Q740,100 780,110 Q800,120 820,140 Q840,160 830,180 Q810,200 790,210 Q770,220 750,210 Q730,200 720,180 Q710,160 700,140 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
-                    <path d="M640,230 Q670,210 700,220 Q720,240 730,260 Q740,280 720,290 Q700,300 680,290 Q660,280 650,260 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
+                <svg id="world-map" style="width:100%;height:100%" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Fond ocean -->
+                    <rect width="1000" height="500" fill="rgba(10,114,239,0.02)"/>
+                    <!-- Vrais continents (paths simplifies mais precis) -->
+                    <g fill="rgba(10,114,239,0.06)" stroke="rgba(10,114,239,0.2)" stroke-width="0.8">
+                        <!-- Amerique du Nord -->
+                        <path d="M150,60 L180,50 L210,55 L240,60 L260,75 L270,65 L290,70 L310,80 L320,95 L310,110 L290,120 L280,135 L270,150 L260,165 L250,180 L240,190 L230,200 L215,205 L200,200 L190,185 L185,170 L180,155 L175,140 L170,125 L165,110 L160,95 L155,80 Z"/>
+                        <!-- Amerique centrale -->
+                        <path d="M230,200 L245,205 L260,210 L270,220 L260,230 L250,235 L240,230 L235,220 Z"/>
+                        <!-- Amerique du Sud -->
+                        <path d="M260,235 L280,240 L300,250 L320,265 L340,280 L360,300 L370,320 L375,340 L370,360 L360,380 L345,390 L330,395 L315,390 L305,375 L295,355 L285,335 L275,315 L268,295 L262,275 L260,255 Z"/>
+                        <!-- Europe -->
+                        <path d="M450,80 L470,75 L490,80 L500,85 L510,90 L515,100 L510,110 L500,120 L490,125 L480,120 L470,115 L460,110 L455,100 Z"/>
+                        <!-- Afrique -->
+                        <path d="M460,125 L490,130 L520,140 L540,155 L555,175 L565,200 L570,225 L570,250 L565,270 L555,290 L540,305 L520,315 L500,318 L480,315 L465,300 L455,280 L450,255 L448,230 L450,205 L455,180 L458,155 Z"/>
+                        <!-- Asie -->
+                        <path d="M510,85 L540,75 L570,80 L600,85 L630,90 L660,100 L680,115 L690,130 L685,145 L670,155 L650,160 L630,158 L610,150 L590,145 L570,140 L550,138 L530,135 L515,125 L510,110 Z"/>
+                        <!-- Asie du Sud-Est -->
+                        <path d="M630,158 L660,165 L680,175 L690,190 L685,205 L670,215 L650,210 L635,200 L625,185 L625,170 Z"/>
+                        <!-- Australie -->
+                        <path d="M770,320 L800,310 L830,315 L850,330 L860,350 L855,370 L840,380 L820,375 L800,365 L785,350 L775,335 Z"/>
+                        <!-- Groenland -->
+                        <path d="M320,40 L345,35 L370,45 L380,65 L375,80 L360,85 L340,80 L325,65 L320,50 Z"/>
+                        <!-- Antarctique -->
+                        <path d="M200,460 L300,450 L400,445 L500,440 L600,445 L700,450 L800,458 L850,465 L800,470 L700,475 L600,478 L500,479 L400,478 L300,475 L200,470 Z"/>
+                    </g>
+                    <!-- Grillage longitude/latitude subtil -->
+                    <g stroke="rgba(10,114,239,0.03)" stroke-width="0.5">
+                        <line x1="0" y1="100" x2="1000" y2="100"/><line x1="0" y1="200" x2="1000" y2="200"/>
+                        <line x1="0" y1="300" x2="1000" y2="300"/><line x1="0" y1="400" x2="1000" y2="400"/>
+                        <line x1="200" y1="0" x2="200" y2="500"/><line x1="400" y1="0" x2="400" y2="500"/>
+                        <line x1="600" y1="0" x2="600" y2="500"/><line x1="800" y1="0" x2="800" y2="500"/>
+                    </g>
+                    <!-- Centre radar -->
+                    <circle cx="500" cy="250" r="2" fill="#0a72ef" opacity="0.8"/>
                     <!-- Sonar sweep -->
-                    <circle id="sonar-ring" cx="500" cy="250" r="0" fill="none" stroke="rgba(10,114,239,0.08)" stroke-width="2">
+                    <circle cx="500" cy="250" r="0" fill="none" stroke="rgba(10,114,239,0.08)" stroke-width="2">
                         <animate attributeName="r" from="50" to="350" dur="4s" repeatCount="indefinite"/>
                         <animate attributeName="opacity" from="0.6" to="0" dur="4s" repeatCount="indefinite"/>
                     </circle>
-                    <circle id="sonar-ring-2" cx="500" cy="250" r="0" fill="none" stroke="rgba(10,114,239,0.05)" stroke-width="1">
+                    <circle cx="500" cy="250" r="0" fill="none" stroke="rgba(10,114,239,0.05)" stroke-width="1">
                         <animate attributeName="r" from="50" to="350" dur="4s" begin="2s" repeatCount="indefinite"/>
                         <animate attributeName="opacity" from="0.4" to="0" dur="4s" begin="2s" repeatCount="indefinite"/>
                     </circle>
-                    <circle cx="500" cy="250" r="50" fill="none" stroke="rgba(10,114,239,0.06)" stroke-width="0.5"/>
-                    <circle cx="500" cy="250" r="150" fill="none" stroke="rgba(10,114,239,0.04)" stroke-width="0.5"/>
-                    <circle cx="500" cy="250" r="300" fill="none" stroke="rgba(10,114,239,0.03)" stroke-width="0.5"/>
-                    <!-- Targets dots rendered by JS -->
+                    <!-- Targets dots -->
                     <g id="recon-targets"></g>
-                    <!-- Center dot -->
-                    <circle cx="500" cy="250" r="3" fill="rgba(10,114,239,0.4)"/>
-                    <circle cx="500" cy="250" r="1.5" fill="#0a72ef"/>
                 </svg>
                 <div style="position:absolute;bottom:12px;left:16px;font-size:11px;color:var(--text-tertiary);font-family:var(--mono)">
                     <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff5b4f;margin-right:4px"></span> Actif
