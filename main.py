@@ -55,11 +55,14 @@ def require_c2_auth(f):
     from functools import wraps
     @wraps(f)
     def wrapper(*args, **kwargs):
-        # Bypass for localhost (TUI compat)
         remote = request.remote_addr or ''
         forwarded = request.headers.get('X-Forwarded-For', '')
         is_local = remote in ('127.0.0.1', '::1') and not forwarded
-        if is_local or session.get('c2_authenticated'):
+        # Bypass only for API calls from localhost (TUI compat)
+        # Dashboard pages ALWAYS require auth
+        is_api = request.path.startswith('/api/')
+        is_local_api = is_local and is_api
+        if is_local_api or session.get('c2_authenticated'):
             return f(*args, **kwargs)
         if request.path.startswith('/api/') and request.method == 'POST':
             return jsonify({"error": "auth_required"}), 401

