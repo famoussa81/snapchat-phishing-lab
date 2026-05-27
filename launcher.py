@@ -752,6 +752,7 @@ def action_campaign():
             print(f"    {G}[6]{X}  Watch Live")
             print(f"    {G}[7]{X}  Dashboard")
             print(f"    {G}[8]{X}  Ouvrir dans le navigateur")
+        print(f"    {G}[10]{X}  Gestion automatisée des campagnes")
         print(f"    {R}[9]{X}  Arrêter le serveur")
         print(f"    {D}[0]{X}  Retour au menu principal")
         print()
@@ -816,6 +817,18 @@ def action_campaign():
                 print(f"  {Y}  → pip install qrcode[pil]{X}")
             input(f"\n  {D}[Appuie sur Entrée]{X}")
             
+        elif c == "10" and server_running:
+            # Campaign manager automatisé
+            try:
+                from campaign_manager import init_campaign_db, interactive_menu as cm_menu
+                init_campaign_db()
+                cm_menu()
+            except ImportError as e:
+                print(f"  {R}\n  Erreur: campaign_manager non trouve {e}{X}")
+                input(f"\n  {D}[Appuie sur Entree]{X}")
+            except Exception as e:
+                print(f"  {R}\n  Erreur: {e}{X}")
+                input(f"\n  {D}[Appuie sur Entree]{X}")
         elif c == "5" and server_running:
             # Email spoof
             base_url = tunnel_url or f"http://localhost:8080"

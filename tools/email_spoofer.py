@@ -234,3 +234,70 @@ def interactive_menu():
 
 if __name__ == "__main__":
     interactive_menu()
+
+
+def send_bulk(smtp_config, from_email, from_name, targets, subject, body_template, url, campaign_id=None):
+    """Envoyer un email en masse a une liste de cibles.
+    
+    Args:
+        smtp_config: dict with host, port, tls keys
+        from_email: expediteur
+        from_name: nom affiche
+        targets: list of dicts with email, pseudo, ville, id
+        subject: sujet de l'email
+        body_template: template avec {pseudo}, {ville}, {lien}, {date}
+        url: base URL du lab
+        campaign_id: optionnel, pour tracking
+    
+    Returns:
+        (sent_count, failed_count, results)
+    """
+    from datetime import datetime
+    results = []
+    sent = 0
+    failed = 0
+    
+    for t in targets:
+        try:
+            # Generer lien unique avec tracking
+            tracking_params = ""
+            if campaign_id and t.get('id'):
+                tracking_params = "?cid={}&tid={}".format(campaign_id, t['id'])
+            full_url = url + tracking_params
+            
+            # Personaliser le corps
+            body = body_template.format(
+                pseudo=t.get('pseudo', 'Utilisateur'),
+                ville=t.get('ville', 'Paris'),
+                lien=full_url,
+                date=datetime.now().strftime("%d/%m/%Y a %H:%M")
+            )
+            
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            
+            msg = MIMEMultipart()
+            msg["From"] = "{} <{}>".format(from_name, from_email)
+            msg["To"] = t["email"]
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+            
+            server = smtplib.SMTP(smtp_config["host"], smtp_config["port"])
+            server.ehlo()
+            if smtp_config.get("tls"):
+                server.starttls()
+                server.ehlo()
+            password = smtp_config.get("password", "")
+            if password:
+                server.login(from_email, password)
+            
+            server.sendmail(from_email, [t["email"]], msg.as_string())
+            server.quit()
+            results.append({"email": t["email"], "ok": True})
+            sent += 1
+        except Exception as e:
+            results.append({"email": t["email"], "ok": False, "error": str(e)})
+            failed += 1
+    
+    return sent, failed, results
