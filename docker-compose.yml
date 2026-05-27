@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  snapchat-lab:
+    build: .
+    container_name: snapchat-phishing-lab
+    ports:
+      - "8080:8080"
+    volumes:
+      - snapchat_data:/app/data
+    environment:
+      - SNAPCHAT_LAB_ADMIN_KEY=${SNAPCHAT_LAB_ADMIN_KEY:-}
+      - CAPTURE_DB=/app/data/captured_credentials.db
+    restart: unless-stopped
+
+volumes:
+  snapchat_data:
