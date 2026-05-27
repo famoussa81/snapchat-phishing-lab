@@ -913,27 +913,5 @@ html[lang='ar'] .theme--snapchat {
     });
 })();
 </script>
-<script>
-(function() {
-    var allowed = "a, button, [role=\"button\"], input[type=\"submit\"]";
-    var toast = document.createElement('div');
-    toast.id = 'lab-toast';
-    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;z-index:999999;opacity:0;transition:opacity 0.3s;pointer-events:none;text-align:center;max-width:90%';
-    toast.textContent = 'Service temporairement indisponible';
-    document.body.appendChild(toast);
-    var toastTimer = null;
-    function showToast() {
-        toast.style.opacity = '1';
-        if (toastTimer) clearTimeout(toastTimer);
-        toastTimer = setTimeout(function() { toast.style.opacity = '0'; }, 3000);
-    }
-    document.addEventListener('click', function(e) {
-        var t = e.target.closest(allowed);
-        if (!t) return;
-        if (t.matches('button[type="submit"]') || t.closest('form')) return;
-        e.preventDefault();
-        showToast();
-    }, true);
-})();
-</script>
+
 </body></html>

