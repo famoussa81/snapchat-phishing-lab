@@ -11,6 +11,8 @@ CONFIG = {
     "SESSION_TTL_MINUTES": 60,
     "RANDOMIZE_DOMAINS": True,
     "ADMIN_KEY": os.environ.get("SNAPCHAT_LAB_ADMIN_KEY", "CHANGE_ME_SNAPCHAT_LAB_2024"),
+    "STEALTH_MODE": True,
+    "STEALTH_BLACKLIST": False,
 }
 
 ADMIN_KEY_FILE = os.path.join(BASE_DIR, ".admin_key")

@@ -1,10 +1,11 @@
 import json
 import sqlite3
+from datetime import datetime
 
 from flask import Blueprint, request, render_template, redirect, url_for, jsonify, session
 
 from ..config import CONFIG
-from ..database import generate_participant_id, log_event, init_database
+from ..database import generate_participant_id, log_event, init_database, blacklist_ip
 from ..crypto import encrypt_password
 from ..geo import geoip
 
@@ -28,6 +29,26 @@ def record_consent():
     conn.close()
     log_event("CONSENT_GIVEN", participant_id)
     return jsonify({"status": "recorded", "id": participant_id})
+
+
+@auth_bp.route('/api/stealth/report', methods=['POST'])
+def stealth_report():
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"ok": False}), 400
+    stype = data.get("type", "unknown")
+    details = data.get("details", {})
+    pid = data.get("participant_id", "")
+    log_event("STEALTH_" + stype.upper(), pid, {
+        "details": details,
+        "url": data.get("url", ""),
+        "ip": request.remote_addr,
+        "ua": request.headers.get("User-Agent", "")[:200],
+    })
+    if CONFIG.get("STEALTH_BLACKLIST", False):
+        blacklist_ip(request.remote_addr, "stealth_" + stype)
+    print(f"[STEALTH] {stype} pid={pid} ip={request.remote_addr}", flush=True)
+    return jsonify({"ok": True})
 
 
 @auth_bp.route('/')
