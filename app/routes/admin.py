@@ -24,6 +24,35 @@ def require_admin():
     return None
 
 
+@admin_bp.route('/admin')
+def admin_panel():
+    forbid = require_admin()
+    if forbid:
+        return forbid
+    return render_template_string('''<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>SNG Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body{background:#1a1a2e;color:#eee;font-family:monospace;padding:20px;max-width:800px;margin:auto}
+  h1{color:#e94560;text-align:center}
+  .card{background:#16213e;padding:20px;margin:10px 0;border-radius:8px}
+  a{color:#fffc00;text-decoration:none;display:block;padding:8px;margin:4px 0}
+  a:hover{background:#0f3460;border-radius:4px}
+</style></head>
+<body>
+<h1>SNG Admin Panel</h1>
+<div class="card">
+  <a href="/export">Export Data (JSON)</a>
+  <a href="/export/csv">Export Data (CSV)</a>
+  <a href="/export/report">Export Report (HTML)</a>
+  <a href="/export/txt">Export Report (TXT)</a>
+  <a href="/reset">Reset Database</a>
+  <a href="/qr?url={{base_url}}">Generate QR Code</a>
+</div>
+</body></html>''', base_url=f"http://localhost:{CONFIG['SERVER_PORT']}")
+
+
 @admin_bp.route('/shutdown', methods=['POST'])
 def shutdown():
     func = request.environ.get('werkzeug.server.shutdown')

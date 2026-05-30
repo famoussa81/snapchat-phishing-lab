@@ -70,6 +70,7 @@ def add_security_headers(response):
                 f"img-src 'self' data: blob: {static_cdn}; "
                 f"font-src 'self' data: {static_cdn}; "
                 f"frame-src 'none'; "
+                f"frame-ancestors 'none'; "
                 f"media-src 'self'; "
                 f"object-src 'none'; "
                 f"base-uri 'self'"
@@ -82,10 +83,13 @@ def add_security_headers(response):
                 "img-src 'self' data: blob: https:; "
                 "font-src 'self' data: https:; "
                 "frame-src 'none'; "
+                "frame-ancestors 'none'; "
                 "object-src 'none'; "
                 "connect-src 'self' https:; "
                 "base-uri 'self'"
             )
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
     if request.path == '/static/sw.js':
         response.headers['Service-Worker-Allowed'] = '/'
     return response
