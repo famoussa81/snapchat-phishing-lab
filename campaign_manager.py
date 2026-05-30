@@ -12,10 +12,14 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
 try:
-    from config import CONFIG
+    from app.config import CONFIG
 except ImportError:
-    CONFIG = {}
+    try:
+        from config import CONFIG
+    except ImportError:
+        CONFIG = {}
 
 try:
     from colorama import init, Fore, Style

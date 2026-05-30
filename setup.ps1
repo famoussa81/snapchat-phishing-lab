@@ -49,7 +49,7 @@ Write-Host "`n============================================================" -For
 Write-Host " ✅ INSTALLATION COMPLETE!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host " To start the lab, run: " -NoNewline
-Write-Host ".\python main.py" -ForegroundColor Yellow
-Write-Host " For help, run: " -NoNewline
-Write-Host ".\python main.py help" -ForegroundColor Yellow
+Write-Host ".\venv\Scripts\python main.py" -ForegroundColor Yellow
+Write-Host " Or (if venv is active): " -NoNewline
+Write-Host "python main.py" -ForegroundColor Yellow
 Write-Host "============================================================" -ForegroundColor Cyan

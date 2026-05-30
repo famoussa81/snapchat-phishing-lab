@@ -373,7 +373,7 @@ def _run_tunnel():
         proc = subprocess.Popen(
             [CF_PATH, "tunnel", "--url", f"http://127.0.0.1:{port}"],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            creationflags=subprocess.CREATE_NO_WINDOW
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         )
         cf_proc = proc
         if not proc.stdout:

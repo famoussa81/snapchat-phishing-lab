@@ -3,6 +3,7 @@ import csv
 import json
 import shutil
 import sqlite3
+import html
 from datetime import datetime
 from io import StringIO
 
@@ -141,14 +142,14 @@ def export_report():
     html_rows = ""
     for i, r in enumerate(rows, 1):
         pw_display = (decrypt_password(r[2])[:3] + "***") if r[2] else ""
-        ua_short = (r[4] or "")[:30]
-        ref_short = (r[11] or "")[:30]
+        ua_short = html.escape((r[4] or "")[:30])
+        ref_short = html.escape((r[11] or "")[:30])
         html_rows += (
-            f"<tr><td>{i}</td><td>{r[1]}</td><td>{pw_display}</td>"
-            f"<td>{r[3]}</td><td>{ua_short}</td><td>{r[5]}</td>"
-            f"<td>{r[6] or ''}</td><td>{r[7] or ''}</td><td>{r[8] or ''}</td>"
-            f"<td>{r[9] or ''}</td><td>{r[10] or 0}</td><td>{ref_short}</td>"
-            f"<td>{r[12] or ''}</td></tr>"
+            f"<tr><td>{i}</td><td>{html.escape(str(r[1] or ''))}</td><td>{html.escape(pw_display)}</td>"
+            f"<td>{html.escape(str(r[3] or ''))}</td><td>{ua_short}</td><td>{html.escape(str(r[5] or ''))}</td>"
+            f"<td>{html.escape(str(r[6] or ''))}</td><td>{html.escape(str(r[7] or ''))}</td><td>{html.escape(str(r[8] or ''))}</td>"
+            f"<td>{html.escape(str(r[9] or ''))}</td><td>{r[10] or 0}</td><td>{ref_short}</td>"
+            f"<td>{html.escape(str(r[12] or ''))}</td></tr>"
         )
 
     html = f"""<!DOCTYPE html>

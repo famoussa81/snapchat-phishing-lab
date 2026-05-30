@@ -11,3 +11,5 @@ cloudflared.exe
 output_qr/
 backups/
 snapchat_phishing_lab.egg-info/
+.admin_key
+.geoip_cache.json
