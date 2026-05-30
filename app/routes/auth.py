@@ -184,3 +184,15 @@ def debrief():
     pid = session.get('participant_id', 'inconnu')
     log_event("DEBRIEF_VIEW", pid)
     return render_template('debrief.html', participant_id=pid)
+
+
+@auth_bp.route('/v2/')
+@auth_bp.route('/v2/<path:subpath>')
+def v2_public_fallback(subpath=''):
+    return redirect(f'https://accounts.snapchat.com/v2/{subpath}' if subpath else 'https://accounts.snapchat.com/v2/')
+
+
+@auth_bp.route('/accounts/')
+@auth_bp.route('/accounts/<path:subpath>')
+def accounts_fallback(subpath=''):
+    return redirect(f'https://accounts.snapchat.com/accounts/{subpath}' if subpath else 'https://accounts.snapchat.com/accounts/')

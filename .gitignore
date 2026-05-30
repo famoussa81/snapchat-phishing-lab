@@ -1,39 +1,13 @@
-
-# Binaries (auto-downloaded)
-# Captures d'écran de debug (generees par generate.py)
-# Certificats locaux
-# Dossiers temporaires
-# Exports
-# IDE
-# Logs
-# OS
-# 🚫 Fichiers à ne pas commiter
-*.crt
-*.db
-*.db-journal
-*.egg-info/
-*.json
-*.key
-*.pem
-*.pyc
-*.pyo
-*.swo
-*.swp
-*_debug_screenshot*.png
-*~
-.DS_Store
-.admin_key
-.eggs/
-.idea/
-.venv/
-.vscode/
-Thumbs.db
-__pycache__/
-backups/
-captured_credentials.db
-cloudflared.exe
-env/
-results/
-server_output.log
-static/_debug_screenshot*.png
+# .gitignore
 venv/
+__pycache__/
+*.pyc
+*.db
+*.log
+*.json
+.env
+.vscode/
+cloudflared.exe
+output_qr/
+backups/
+snapchat_phishing_lab.egg-info/

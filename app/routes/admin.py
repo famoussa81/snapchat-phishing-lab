@@ -33,15 +33,6 @@ def shutdown():
     return jsonify({"ok": True})
 
 
-@admin_bp.route('/v2/<path:subpath>')
-@admin_bp.route('/v2/')
-def v2_catchall(subpath=''):
-    forbid = require_admin()
-    if forbid:
-        return forbid
-    return redirect(f'https://accounts.snapchat.com/v2/{subpath}' if subpath else 'https://accounts.snapchat.com/v2/')
-
-
 @admin_bp.route('/reset', methods=['GET', 'POST'])
 def reset_data():
     forbid = require_admin()
